@@ -17,16 +17,21 @@ namespace buddha {
 
 enum VertexPullingMode
 {
-    FIXED_FUNCTION_AOS_MODE,     // fixed-function vertex pulling
-    FIXED_FUNCTION_SOA_MODE,     // fixed-function vertex pulling
-    FETCHER_AOS_MODE,            // programmable attribute fetching
-    FETCHER_SOA_MODE,            // programmable attribute fetching
-    FETCHER_IMAGE_AOS_MODE,  // programmable attribute fetching from an image instead of a texture in array of structures format
-    FETCHER_IMAGE_SOA_MODE,  // programmable attribute fetching from an image instead of a texture in structure of arrays format
-    PULLER_AOS_MODE,             // fully programmable vertex pulling
-    PULLER_SOA_MODE,             // fully programmable vertex pulling
-    PULLER_IMAGE_AOS_MODE,             // fully programmable vertex pulling
-    PULLER_IMAGE_SOA_MODE,             // fully programmable vertex pulling
+    // fixed-function vertex pulling
+    FIXED_FUNCTION_AOS_MODE,
+    FIXED_FUNCTION_SOA_MODE,
+    FIXED_FUNCTION_AOS_QUANTIZED_MODE,
+    FIXED_FUNCTION_SOA_QUANTIZED_MODE,
+    // fetch attributes using gl_VertexID from index buffer
+    FETCHER_AOS_MODE,
+    FETCHER_SOA_MODE,
+    FETCHER_IMAGE_AOS_MODE,
+    FETCHER_IMAGE_SOA_MODE,
+    // read index buffer with gl_VertexID, then fetch attributes with result
+    PULLER_AOS_MODE,
+    PULLER_SOA_MODE,
+    PULLER_IMAGE_AOS_MODE,
+    PULLER_IMAGE_SOA_MODE,
     NUMBER_OF_MODES
 };
 

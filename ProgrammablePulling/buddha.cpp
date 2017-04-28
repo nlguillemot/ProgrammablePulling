@@ -59,6 +59,7 @@ protected:
     GLuint indexBuffer;                     // index buffer for the mesh
     GLuint positionBuffer;                    // vertex buffer for the mesh
     GLuint normalBuffer;
+    GLuint normalBufferQuantized;
 
     GLuint positionXBuffer;
     GLuint positionYBuffer;
@@ -66,11 +67,16 @@ protected:
     GLuint normalXBuffer;
     GLuint normalYBuffer;
     GLuint normalZBuffer;
+    GLuint normalXBufferQuantized;
+    GLuint normalYBufferQuantized;
+    GLuint normalZBufferQuantized;
 
     GLuint nullVertexArray;
     GLuint vertexArrayIndexBufferOnly;
-    GLuint vertexArrayAoS;                     // vertex array for the three vertex pulling modes
-    GLuint vertexArraySoA;                     // vertex array for the three vertex pulling modes
+    GLuint vertexArrayAoS;
+    GLuint vertexArraySoA;
+    GLuint vertexArrayAoSQuantized;
+    GLuint vertexArraySoAQuantized;
 
     GLuint indexTexBuffer;                  // index buffer texture
     GLuint positionTexBuffer;                 
@@ -136,96 +142,169 @@ void BuddhaDemo::loadModels() {
 
     std::cout << "> Uploading mesh data to GPU..." << std::endl;
 
-	// create index buffer
-	GLsizei indexBufferSize = (GLsizei)(buddhaObj.Indices.size() * sizeof(GLuint));
-	glGenBuffers(1, &indexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
-
-	// map index buffer and fill with data
-    GLuint *index = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, indexBufferSize,
-						GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-    for (size_t i = 0; i < buddhaObj.Indices.size(); i++)
-		index[i] = buddhaObj.Indices[i];
-
-	glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// create AoS vertex buffer
-    GLsizei positionBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec3));
-	glGenBuffers(1, &positionBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-	glBufferData(GL_ARRAY_BUFFER, positionBufferSize, NULL, GL_STATIC_DRAW);
-
-	// map vertex buffer and fill with data
-	glm::vec3* positions = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, positionBufferSize,
-						GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-    for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
+    // Index buffer
     {
-        positions[i][0] = buddhaObj.Positions[i][0];
-        positions[i][1] = buddhaObj.Positions[i][1];
-        positions[i][2] = buddhaObj.Positions[i][2];
-	}
+        GLsizei indexBufferSize = (GLsizei)(buddhaObj.Indices.size() * sizeof(GLuint));
+        glGenBuffers(1, &indexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, indexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
 
-	glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    GLsizei normalBufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec3));
-    glGenBuffers(1, &normalBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-    glBufferData(GL_ARRAY_BUFFER, normalBufferSize, NULL, GL_STATIC_DRAW);
-
-    // map vertex buffer and fill with data
-    glm::vec3* normals = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, normalBufferSize,
-        GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-    for (size_t i = 0; i < buddhaObj.Normals.size(); i++)
-    {
-        normals[i][0] = buddhaObj.Normals[i][0];
-        normals[i][1] = buddhaObj.Normals[i][1];
-        normals[i][2] = buddhaObj.Normals[i][2];
-    }
-
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // SoA buffers
-    for (size_t soaIdx = 0; soaIdx < 6; soaIdx++)
-    {
-        GLuint* pVertexBuffer =
-            soaIdx == 0 ? &positionXBuffer :
-            soaIdx == 1 ? &positionYBuffer :
-            soaIdx == 2 ? &positionZBuffer :
-            soaIdx == 3 ? &normalXBuffer   :
-            soaIdx == 4 ? &normalYBuffer   :
-            soaIdx == 5 ? &normalZBuffer   :
-            NULL;
-
-        // create empty vertex buffer
-        GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(float));
-        glGenBuffers(1, pVertexBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        float* buf = (float*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vertexBufferSize,
+        // map index buffer and fill with data
+        GLuint *index = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, indexBufferSize,
             GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
 
-        for (size_t i = 0; i < buddhaObj.Positions.size(); i++) {
-            buf[i] =
-                soaIdx == 0 ? buddhaObj.Positions[i].x :
-                soaIdx == 1 ? buddhaObj.Positions[i].y :
-                soaIdx == 2 ? buddhaObj.Positions[i].z :
-                soaIdx == 3 ? buddhaObj.Normals[i].x   :
-                soaIdx == 4 ? buddhaObj.Normals[i].y   :
-                soaIdx == 5 ? buddhaObj.Normals[i].z   :
-                0.0f;
+        for (size_t i = 0; i < buddhaObj.Indices.size(); i++)
+            index[i] = buddhaObj.Indices[i];
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+	// AoS position buffer
+    {
+        GLsizei positionBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec3));
+        glGenBuffers(1, &positionBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
+        glBufferData(GL_ARRAY_BUFFER, positionBufferSize, NULL, GL_STATIC_DRAW);
+
+        // map vertex buffer and fill with data
+        glm::vec3* positions = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, positionBufferSize,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+        for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
+        {
+            positions[i][0] = buddhaObj.Positions[i][0];
+            positions[i][1] = buddhaObj.Positions[i][1];
+            positions[i][2] = buddhaObj.Positions[i][2];
         }
 
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // AoS normal buffer
+    {
+        GLsizei normalBufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec3));
+        glGenBuffers(1, &normalBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
+        glBufferData(GL_ARRAY_BUFFER, normalBufferSize, NULL, GL_STATIC_DRAW);
+
+        // map vertex buffer and fill with data
+        glm::vec3* normals = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, normalBufferSize,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+        for (size_t i = 0; i < buddhaObj.Normals.size(); i++)
+        {
+            normals[i][0] = buddhaObj.Normals[i][0];
+            normals[i][1] = buddhaObj.Normals[i][1];
+            normals[i][2] = buddhaObj.Normals[i][2];
+        }
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    auto quantizeToSnorm = [](float x)
+    {
+        return uint8_t(uint32_t((x + 1.0f) / 2.0f * 255));
+    };
+
+    // AoS quantized normal buffer
+    {
+        GLsizei normalBufferQuantizedSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(uint8_t) * 3);
+        glGenBuffers(1, &normalBufferQuantized);
+        glBindBuffer(GL_ARRAY_BUFFER, normalBufferQuantized);
+        glBufferData(GL_ARRAY_BUFFER, normalBufferQuantizedSize, NULL, GL_STATIC_DRAW);
+
+        // map vertex buffer and fill with data
+        uint8_t* quantizedNormals = (uint8_t*)glMapBufferRange(GL_ARRAY_BUFFER, 0, normalBufferQuantizedSize,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+        for (size_t i = 0; i < buddhaObj.Normals.size(); i++)
+        {
+            quantizedNormals[i * 3 + 0] = quantizeToSnorm(buddhaObj.Normals[i][0]);
+            quantizedNormals[i * 3 + 1] = quantizeToSnorm(buddhaObj.Normals[i][1]);
+            quantizedNormals[i * 3 + 2] = quantizeToSnorm(buddhaObj.Normals[i][2]);
+        }
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // SoA buffers
+    for (size_t soaIdx = 0; soaIdx < 9; soaIdx++)
+    {
+        GLuint* pVertexBuffer =
+            soaIdx == 0 ? &positionXBuffer          :
+            soaIdx == 1 ? &positionYBuffer          :
+            soaIdx == 2 ? &positionZBuffer          :
+            soaIdx == 3 ? &normalXBuffer            :
+            soaIdx == 4 ? &normalYBuffer            :
+            soaIdx == 5 ? &normalZBuffer            :
+            soaIdx == 6 ? &normalXBufferQuantized   :
+            soaIdx == 7 ? &normalYBufferQuantized   :
+            soaIdx == 8 ? &normalZBufferQuantized   :
+            NULL;
+
+        if (soaIdx >= 0 && soaIdx <= 5)
+        {
+            // float attribs
+
+            GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(float));
+            glGenBuffers(1, pVertexBuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
+            glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
+
+            // map vertex buffer and fill with data
+            float* buf = (float*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vertexBufferSize,
+                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+            for (size_t i = 0; i < buddhaObj.Positions.size(); i++) {
+                buf[i] =
+                    soaIdx == 0 ? buddhaObj.Positions[i].x                :
+                    soaIdx == 1 ? buddhaObj.Positions[i].y                :
+                    soaIdx == 2 ? buddhaObj.Positions[i].z                :
+                    soaIdx == 3 ? buddhaObj.Normals[i].x                  :
+                    soaIdx == 4 ? buddhaObj.Normals[i].y                  :
+                    soaIdx == 5 ? buddhaObj.Normals[i].z                  :
+                    soaIdx == 6 ? quantizeToSnorm(buddhaObj.Normals[i].x) :
+                    soaIdx == 7 ? quantizeToSnorm(buddhaObj.Normals[i].y) :
+                    soaIdx == 8 ? quantizeToSnorm(buddhaObj.Normals[i].z) :
+                    0.0f;
+            }
+
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+        else if (soaIdx >= 6 && soaIdx <= 8)
+        {
+            // snorm attribs
+
+            GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(uint8_t));
+            glGenBuffers(1, pVertexBuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
+            glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
+
+            // map vertex buffer and fill with data
+            uint8_t* buf = (uint8_t*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vertexBufferSize,
+                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+            for (size_t i = 0; i < buddhaObj.Positions.size(); i++) 
+            {
+                buf[i] =
+                    soaIdx == 6 ? quantizeToSnorm(buddhaObj.Normals[i].x) :
+                    soaIdx == 7 ? quantizeToSnorm(buddhaObj.Normals[i].y) :
+                    soaIdx == 8 ? quantizeToSnorm(buddhaObj.Normals[i].z) :
+                    0;
+            }
+
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+        else
+        {
+            assert(false);
+        }
     }
 
 	// setup vertex arrays
@@ -251,6 +330,17 @@ void BuddhaDemo::loadModels() {
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
     glBindVertexArray(0);
 
+    glGenVertexArrays(1, &vertexArrayAoSQuantized);
+    glBindVertexArray(vertexArrayAoSQuantized);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalBufferQuantized);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(uint8_t) * 3, 0);
+    glBindVertexArray(0);
+
     glGenVertexArrays(1, &vertexArraySoA);
     glBindVertexArray(vertexArraySoA);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -274,6 +364,29 @@ void BuddhaDemo::loadModels() {
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
     glBindVertexArray(0);
 
+    glGenVertexArrays(1, &vertexArraySoAQuantized);
+    glBindVertexArray(vertexArraySoAQuantized);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, positionXBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, positionYBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, positionZBuffer);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalXBufferQuantized);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(uint8_t), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalYBufferQuantized);
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 1, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(uint8_t), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalZBufferQuantized);
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 1, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(uint8_t), 0);
+    glBindVertexArray(0);
+
     drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
 	drawCmd[FIXED_FUNCTION_AOS_MODE].useIndices = true;
 	drawCmd[FIXED_FUNCTION_AOS_MODE].prim_type = GL_TRIANGLES;
@@ -285,6 +398,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[FIXED_FUNCTION_SOA_MODE].prim_type = GL_TRIANGLES;
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexOffset = 0;
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FIXED_FUNCTION_AOS_QUANTIZED_MODE].vertexArray = vertexArrayAoSQuantized;
+    drawCmd[FIXED_FUNCTION_AOS_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FIXED_FUNCTION_AOS_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FIXED_FUNCTION_AOS_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FIXED_FUNCTION_AOS_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FIXED_FUNCTION_SOA_QUANTIZED_MODE].vertexArray = vertexArraySoAQuantized;
+    drawCmd[FIXED_FUNCTION_SOA_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FIXED_FUNCTION_SOA_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FIXED_FUNCTION_SOA_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FIXED_FUNCTION_SOA_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FETCHER_AOS_MODE].vertexArray = vertexArrayIndexBufferOnly;
 	drawCmd[FETCHER_AOS_MODE].useIndices = true;
@@ -396,7 +521,6 @@ GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shader
 	}
 
     const GLchar* sources[] = {
-        "#version 430 core\n",
         source.c_str()
     };
 
@@ -453,6 +577,12 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
+
+    vertexProg[FIXED_FUNCTION_AOS_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fixed_aos_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FIXED_FUNCTION_AOS_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_QUANTIZED_MODE], 0, fragmentProg);
+
+    vertexProg[FIXED_FUNCTION_SOA_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fixed_soa_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FIXED_FUNCTION_SOA_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_QUANTIZED_MODE], 0, fragmentProg);
 
 	vertexProg[FETCHER_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos.vert", GL_VERTEX_SHADER);
 	progPipeline[FETCHER_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_MODE], 0, fragmentProg);

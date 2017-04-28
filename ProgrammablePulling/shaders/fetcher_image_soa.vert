@@ -13,6 +13,7 @@ layout(r32f, binding = 3) restrict readonly uniform imageBuffer normalXbuffer;
 layout(r32f, binding = 4) restrict readonly uniform imageBuffer normalYbuffer;
 layout(r32f, binding = 5) restrict readonly uniform imageBuffer normalZbuffer;
 
+out vec3 outVertexPosition;
 out vec3 outVertexNormal;
 
 out gl_PerVertex {
@@ -33,6 +34,7 @@ void main(void) {
 	inVertexNormal.z   = imageLoad(normalZbuffer, gl_VertexID).x; 
 	
 	/* transform vertex and normal */
+	outVertexPosition = (Transform.ModelViewMatrix * vec4(inVertexPosition, 1)).xyz;
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;
 	gl_Position = Transform.MVPMatrix * vec4(inVertexPosition, 1);
 	

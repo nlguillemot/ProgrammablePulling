@@ -110,19 +110,22 @@ int main()
 
     const char* modeStrings[buddha::NUMBER_OF_MODES] =
     {
-        "Fixed-function     | AoS | vertex array",
-        "Fixed-function     | SoA | vertex array",
-        "Programmable       | AoS | texture",
-        "Programmable       | SoA | texture",
-        "Programmable       | AoS | image",
-        "Programmable       | SoA | image",
-        "Fully programmable | AoS | texture",
-        "Fully programmable | SoA | texture",
-        "Fully programmable | AoS | image",
-        "Fully programmable | SoA | image"
+        "Fixed-function     | AoS | v(r32f) n(r32f)     | vertex array",
+        "Fixed-function     | SoA | v(r32f) n(r32f)     | vertex array",
+        "Fixed-function     | AoS | v(r32f) n(r8_snorm) | vertex array",
+        "Fixed-function     | SoA | v(r32f) n(r8_snorm) | vertex array",
+        "Programmable       | AoS | v(r32f) n(r32f)     | texture",
+        "Programmable       | SoA | v(r32f) n(r32f)     | texture",
+        "Programmable       | AoS | v(r32f) n(r32f)     | image",
+        "Programmable       | SoA | v(r32f) n(r32f)     | image",
+        "Fully programmable | AoS | v(r32f) n(r32f)     | texture",
+        "Fully programmable | SoA | v(r32f) n(r32f)     | texture",
+        "Fully programmable | AoS | v(r32f) n(r32f)     | image",
+        "Fully programmable | SoA | v(r32f) n(r32f)     | image"
     };
 
     double then = glfwGetTime();
+    bool animate = true;
 
     for (;;)
     {
@@ -135,13 +138,14 @@ int main()
         ImGui_ImplGlfwGL3_NewFrame();
         
         uint64_t elapsedNanoseconds;
-        pDemo->renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
+        pDemo->renderScene(animate ? (float)dtsec : 0.0f, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(500.0f, 250.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 300.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
+            ImGui::Checkbox("Animate", &animate);
         }
         ImGui::End();
 

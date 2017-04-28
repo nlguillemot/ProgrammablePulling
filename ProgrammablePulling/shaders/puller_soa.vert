@@ -14,6 +14,7 @@ layout(binding = 4) uniform samplerBuffer normalXBuffer;
 layout(binding = 5) uniform samplerBuffer normalYBuffer;
 layout(binding = 6) uniform samplerBuffer normalZBuffer;
 
+out vec3 outVertexPosition;
 out vec3 outVertexNormal;
 
 out gl_PerVertex {
@@ -36,6 +37,7 @@ void main(void) {
 	inVertexNormal.z   = texelFetch(normalZBuffer, inIndex).x; 
 	
 	/* transform vertex and normal */
+	outVertexPosition = (Transform.ModelViewMatrix * vec4(inVertexPosition, 1)).xyz;
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;
 	gl_Position = Transform.MVPMatrix * vec4(inVertexPosition, 1);
 	

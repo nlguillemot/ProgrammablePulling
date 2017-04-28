@@ -107,7 +107,8 @@
   <ItemGroup>
     <None Include="shaders\common.frag" />
     <None Include="shaders\fetcher.vert" />
-    <None Include="shaders\fetcher_image.vert" />
+    <None Include="shaders\fetcher_image_aos.vert" />
+    <None Include="shaders\fetcher_image_soa.vert" />
     <None Include="shaders\fixed.vert" />
     <None Include="shaders\puller.vert" />
   </ItemGroup>

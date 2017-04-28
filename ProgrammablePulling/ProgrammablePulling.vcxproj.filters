@@ -63,7 +63,10 @@
     <None Include="shaders\fixed.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\fetcher_image.vert">
+    <None Include="shaders\fetcher_image_soa.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_image_aos.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

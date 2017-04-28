@@ -106,19 +106,20 @@ int main()
     // Setup ImGui binding
     ImGui_ImplGlfwGL3_Init(window, true /* install callbacks */);
 
-	buddha::BuddhaDemo demoScene;
+    std::shared_ptr<buddha::IBuddhaDemo> pDemo = buddha::IBuddhaDemo::Create();
 
-	const char* modeStrings[buddha::NUMBER_OF_MODES] =
-	{
-		"Fixed-function vertex pulling",
-		"Programmable attribute fetching",
-        "Programmable attribute image fetching",
-		"Fully programmable vertex pulling"
-	};
+    const char* modeStrings[buddha::NUMBER_OF_MODES] =
+    {
+        "Fixed-function vertex pulling",
+        "Programmable attribute fetching",
+        "Programmable attribute AoS image fetching",
+        "Programmable attribute SoA image fetching",
+        "Fully programmable vertex pulling"
+    };
 
     double then = glfwGetTime();
 
-	for (;;)
+    for (;;)
     {
         double now = glfwGetTime();
         double dtsec = now - then;
@@ -129,12 +130,12 @@ int main()
         ImGui_ImplGlfwGL3_NewFrame();
         
         uint64_t elapsedNanoseconds;
-        demoScene.renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
+        pDemo->renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(450.0f, 100.0f), ImGuiSetCond_Always);
-        if (ImGui::Begin("Info"))
+        ImGui::SetNextWindowSize(ImVec2(475.0f, 150.0f), ImGuiSetCond_Always);
+        if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
-            ImGui::Combo("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES);
+            ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES);
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
         }
         ImGui::End();

@@ -16,6 +16,80 @@
 #include "buddha.h"
 
 namespace buddha {
+    
+struct Transform {
+	glm::mat4 ModelViewMatrix;		// modelview matrix of the transformation
+	glm::mat4 ProjectionMatrix;		// projection matrix of the transformation
+	glm::mat4 MVPMatrix;			// modelview-projection matrix
+};
+
+struct Camera {
+	glm::vec3 position;				// camera position
+	glm::vec3 rotation;				// camera rotation
+};
+
+struct Vertex {
+	glm::vec3 position;				// vertex position
+	glm::vec3 normal;				// vertex normal
+};
+
+struct DrawCommand {
+	bool useIndices;				// specifies whether this is an indexed draw command
+	GLenum prim_type;				// primitive type
+	union {
+		struct {
+			GLuint indexOffset;	// offset into the index buffer
+			GLuint indexCount;	// number of indices
+		};
+		struct {
+			GLuint firstVertex;	// first vertex index
+			GLuint vertexCount;	// number of vertices
+		};
+	};
+};
+
+class BuddhaDemo : public IBuddhaDemo {
+protected:
+
+    Camera camera;                          // camera data
+
+    Transform transform;                    // transformation data
+    GLuint transformUB;                     // uniform buffer for the transformation
+
+    GLuint fragmentProg;                    // common fragment shader program
+    GLuint vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
+    GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
+
+    GLuint indexBuffer;                     // index buffer for the mesh
+    GLuint vertexBuffer;                    // vertex buffer for the mesh
+
+    GLuint vertexArray;                     // vertex array for the three vertex pulling modes
+
+    GLuint indexTexBuffer;                  // index buffer texture
+    GLuint vertexTexBuffer;                 // vertex buffer texture
+
+    GLuint timeElapsedQuery;                // query object for the time taken to render the scene
+
+    DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
+
+    float cameraRotationFactor;             // camera rotation factor between [0,2*PI)
+
+    void loadModels();
+    void loadShaders();
+
+    GLuint loadShaderProgramFromFile(const char* filename, GLenum shaderType);
+    GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
+
+public:
+    BuddhaDemo();
+
+    void renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds);
+};
+
+std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
+{
+    return std::make_shared<BuddhaDemo>();
+}
 
 BuddhaDemo::BuddhaDemo() {
 
@@ -109,10 +183,10 @@ void BuddhaDemo::loadModels() {
 	drawCmd[FETCHER_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
     // setup draw command for programmable attribute fetching with an image
-    drawCmd[IMAGE_FETCHER_MODE].useIndices = true;
-    drawCmd[IMAGE_FETCHER_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[IMAGE_FETCHER_MODE].indexOffset = 0;
-    drawCmd[IMAGE_FETCHER_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_IMAGE_AOS_MODE].useIndices = true;
+    drawCmd[FETCHER_IMAGE_AOS_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_IMAGE_AOS_MODE].indexOffset = 0;
+    drawCmd[FETCHER_IMAGE_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
 	// setup draw command for fully programmable vertex pulling
 	drawCmd[PULLER_MODE].useIndices = false;
@@ -199,22 +273,20 @@ void BuddhaDemo::loadShaders() {
 	// load common fragment shader
 	fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER);
 
-	// load fixed-function vertex pulling shader
 	vertexProg[FIXED_FUNCTION_MODE] = loadShaderProgramFromFile("shaders/fixed.vert", GL_VERTEX_SHADER);
 	progPipeline[FIXED_FUNCTION_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_MODE], 0, fragmentProg);
 
-	// load programmable attribute fetching shader
 	vertexProg[FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher.vert", GL_VERTEX_SHADER);
 	progPipeline[FETCHER_MODE] = createProgramPipeline(vertexProg[FETCHER_MODE], 0, fragmentProg);
 
-    // load programmable attribute image fetching shader
-    vertexProg[IMAGE_FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher_image.vert", GL_VERTEX_SHADER);
-    progPipeline[IMAGE_FETCHER_MODE] = createProgramPipeline(vertexProg[IMAGE_FETCHER_MODE], 0, fragmentProg);
+    vertexProg[FETCHER_IMAGE_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_IMAGE_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_MODE], 0, fragmentProg);
 
-	// load fully programmable vertex pulling shader
+    vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
+
 	vertexProg[PULLER_MODE] = loadShaderProgramFromFile("shaders/puller.vert", GL_VERTEX_SHADER);
 	progPipeline[PULLER_MODE] = createProgramPipeline(vertexProg[PULLER_MODE], 0, fragmentProg);
-
 }
 
 void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)

@@ -78,9 +78,11 @@ protected:
     GLuint vertexArrayAoSQuantized;
     GLuint vertexArraySoAQuantized;
 
-    GLuint indexTexBuffer;                  // index buffer texture
-    GLuint positionTexBuffer;                 
+    // texture handles to the vertex buffers
+    GLuint indexTexBuffer;
+    GLuint positionTexBuffer;
     GLuint normalTexBuffer;
+    GLuint normalTexBufferQuantized;
 
     GLuint positionXTexBuffer;
     GLuint positionYTexBuffer;
@@ -88,6 +90,9 @@ protected:
     GLuint normalXTexBuffer;
     GLuint normalYTexBuffer;
     GLuint normalZTexBuffer;
+    GLuint normalXTexBufferQuantized;
+    GLuint normalYTexBufferQuantized;
+    GLuint normalZTexBufferQuantized;
 
     GLuint timeElapsedQuery;                // query object for the time taken to render the scene
 
@@ -423,6 +428,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[FETCHER_SOA_MODE].indexOffset = 0;
     drawCmd[FETCHER_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
+    drawCmd[FETCHER_AOS_QUANTIZED_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_AOS_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FETCHER_AOS_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_AOS_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FETCHER_AOS_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_SOA_QUANTIZED_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SOA_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FETCHER_SOA_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_SOA_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FETCHER_SOA_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
     drawCmd[FETCHER_IMAGE_AOS_MODE].vertexArray = vertexArrayIndexBufferOnly;
     drawCmd[FETCHER_IMAGE_AOS_MODE].useIndices = true;
     drawCmd[FETCHER_IMAGE_AOS_MODE].prim_type = GL_TRIANGLES;
@@ -475,29 +492,52 @@ void BuddhaDemo::loadModels() {
     glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, normalBuffer);
     glBindTexture(GL_TEXTURE_BUFFER, 0);
 
-    for (size_t soaIdx = 0; soaIdx < 6; soaIdx++)
+    glGenTextures(1, &normalTexBufferQuantized);
+    glBindTexture(GL_TEXTURE_BUFFER, normalTexBufferQuantized);
+    glTexBuffer(GL_TEXTURE_BUFFER, GL_R8, normalBufferQuantized);
+    glBindTexture(GL_TEXTURE_BUFFER, 0);
+
+    for (size_t soaIdx = 0; soaIdx < 9; soaIdx++)
     {
         GLuint* pVertexBuffer =
-            soaIdx == 0 ? &positionXBuffer :
-            soaIdx == 1 ? &positionYBuffer :
-            soaIdx == 2 ? &positionZBuffer :
-            soaIdx == 3 ? &normalXBuffer :
-            soaIdx == 4 ? &normalYBuffer :
-            soaIdx == 5 ? &normalZBuffer :
+            soaIdx == 0 ? &positionXBuffer        :
+            soaIdx == 1 ? &positionYBuffer        :
+            soaIdx == 2 ? &positionZBuffer        :
+            soaIdx == 3 ? &normalXBuffer          :
+            soaIdx == 4 ? &normalYBuffer          :
+            soaIdx == 5 ? &normalZBuffer          :
+            soaIdx == 6 ? &normalXBufferQuantized :
+            soaIdx == 7 ? &normalYBufferQuantized :
+            soaIdx == 8 ? &normalZBufferQuantized :
             NULL;
 
         GLuint* pVertexTexBuffer =
-            soaIdx == 0 ? &positionXTexBuffer :
-            soaIdx == 1 ? &positionYTexBuffer :
-            soaIdx == 2 ? &positionZTexBuffer :
-            soaIdx == 3 ? &normalXTexBuffer :
-            soaIdx == 4 ? &normalYTexBuffer :
-            soaIdx == 5 ? &normalZTexBuffer :
+            soaIdx == 0 ? &positionXTexBuffer        :
+            soaIdx == 1 ? &positionYTexBuffer        :
+            soaIdx == 2 ? &positionZTexBuffer        :
+            soaIdx == 3 ? &normalXTexBuffer          :
+            soaIdx == 4 ? &normalYTexBuffer          :
+            soaIdx == 5 ? &normalZTexBuffer          :
+            soaIdx == 6 ? &normalXTexBufferQuantized :
+            soaIdx == 7 ? &normalYTexBufferQuantized :
+            soaIdx == 8 ? &normalZTexBufferQuantized :
+            NULL;
+
+        GLenum format =
+            soaIdx == 0 ? GL_R32F :
+            soaIdx == 1 ? GL_R32F :
+            soaIdx == 2 ? GL_R32F :
+            soaIdx == 3 ? GL_R32F :
+            soaIdx == 4 ? GL_R32F :
+            soaIdx == 5 ? GL_R32F :
+            soaIdx == 6 ? GL_R8   :
+            soaIdx == 7 ? GL_R8   :
+            soaIdx == 8 ? GL_R8   :
             NULL;
 
         glGenTextures(1, pVertexTexBuffer);
         glBindTexture(GL_TEXTURE_BUFFER, *pVertexTexBuffer);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, *pVertexBuffer);
+        glTexBuffer(GL_TEXTURE_BUFFER, format, *pVertexBuffer);
         glBindTexture(GL_TEXTURE_BUFFER, 0);
     }
 }
@@ -590,6 +630,12 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FETCHER_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_MODE], 0, fragmentProg);
 
+    vertexProg[FETCHER_AOS_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_AOS_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_QUANTIZED_MODE], 0, fragmentProg);
+
+    vertexProg[FETCHER_SOA_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_SOA_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_QUANTIZED_MODE], 0, fragmentProg);
+
     vertexProg[FETCHER_IMAGE_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_MODE], 0, fragmentProg);
 
@@ -662,6 +708,20 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         bindBufferTextureUnit(3, normalXTexBuffer);
         bindBufferTextureUnit(4, normalYTexBuffer);
         bindBufferTextureUnit(5, normalZTexBuffer);
+    }
+    else if (mode == FETCHER_AOS_QUANTIZED_MODE)
+    {
+        bindBufferTextureUnit(0, positionTexBuffer);
+        bindBufferTextureUnit(1, normalTexBufferQuantized);
+    }
+    else if (mode == FETCHER_SOA_QUANTIZED_MODE)
+    {
+        bindBufferTextureUnit(0, positionXTexBuffer);
+        bindBufferTextureUnit(1, positionYTexBuffer);
+        bindBufferTextureUnit(2, positionZTexBuffer);
+        bindBufferTextureUnit(3, normalXTexBufferQuantized);
+        bindBufferTextureUnit(4, normalYTexBufferQuantized);
+        bindBufferTextureUnit(5, normalZTexBufferQuantized);
     }
     else if (mode == FETCHER_IMAGE_AOS_MODE)
     {

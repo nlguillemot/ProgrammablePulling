@@ -90,5 +90,11 @@
     <None Include="shaders\fixed_soa_quantized.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\fetcher_aos_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_soa_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

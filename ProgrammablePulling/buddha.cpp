@@ -787,9 +787,9 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindImageTexture(0, positionXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(1, positionYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(2, positionZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(3, normalXTexBufferR8, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(4, normalYTexBufferR8, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(5, normalZTexBufferR8, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(3, normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(4, normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(5, normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
     else if (mode == FETCHER_IMAGE_AOS_QUANTIZED_MODE)
     {

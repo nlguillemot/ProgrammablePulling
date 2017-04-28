@@ -108,35 +108,48 @@ int main()
 
     std::shared_ptr<buddha::IBuddhaDemo> pDemo = buddha::IBuddhaDemo::Create();
 
-    const char* modeStrings[buddha::NUMBER_OF_MODES] =
+    const char* modeStringFormats[buddha::NUMBER_OF_MODES] =
     {
-        "Fixed-function     | AoS | v(r32f) n(r32f)     | vertex array",
-        "Fixed-function     | SoA | v(r32f) n(r32f)     | vertex array",
-        "Fixed-function     | AoS | v(r32f) n(r8_snorm) | vertex array",
-        "Fixed-function     | SoA | v(r32f) n(r8_snorm) | vertex array",
-        "Programmable       | AoS | v(r32f) n(r32f)     | texture",
-        "Programmable       | SoA | v(r32f) n(r32f)     | texture",
-        "Programmable       | AoS | v(r32f) n(r8_snorm) | texture",
-        "Programmable       | SoA | v(r32f) n(r8_snorm) | texture",
-        "Programmable       | AoS | v(r32f) n(r32f)     | image",
-        "Programmable       | SoA | v(r32f) n(r32f)     | image",
-        "Programmable       | AoS | v(r32f) n(r8_snorm) | image",
-        "Programmable       | SoA | v(r32f) n(r8_snorm) | image",
-        "Fully programmable | AoS | v(r32f) n(r32f)     | texture",
-        "Fully programmable | SoA | v(r32f) n(r32f)     | texture",
-        "Fully programmable | AoS | v(r32f) n(r8_snorm) | texture",
-        "Fully programmable | SoA | v(r32f) n(r8_snorm) | texture",
-        "Fully programmable | AoS | v(r32f) n(r32f)     | image",
-        "Fully programmable | SoA | v(r32f) n(r32f)     | image",
-        "Fully programmable | AoS | v(r32f) n(r8_snorm) | image",
-        "Fully programmable | SoA | v(r32f) n(r8_snorm) | image",
+        "Fixed-function     | AoS | v(r32f) n(r32f)     | vertex array | %8llu microseconds",
+        "Fixed-function     | SoA | v(r32f) n(r32f)     | vertex array | %8llu microseconds",
+        "Fixed-function     | AoS | v(r32f) n(r8_snorm) | vertex array | %8llu microseconds",
+        "Fixed-function     | SoA | v(r32f) n(r8_snorm) | vertex array | %8llu microseconds",
+        "Programmable       | AoS | v(r32f) n(r32f)     | texture      | %8llu microseconds",
+        "Programmable       | SoA | v(r32f) n(r32f)     | texture      | %8llu microseconds",
+        "Programmable       | AoS | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
+        "Programmable       | SoA | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
+        "Programmable       | AoS | v(r32f) n(r32f)     | image        | %8llu microseconds",
+        "Programmable       | SoA | v(r32f) n(r32f)     | image        | %8llu microseconds",
+        "Programmable       | AoS | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
+        "Programmable       | SoA | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
+        "Fully programmable | AoS | v(r32f) n(r32f)     | texture      | %8llu microseconds",
+        "Fully programmable | SoA | v(r32f) n(r32f)     | texture      | %8llu microseconds",
+        "Fully programmable | AoS | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
+        "Fully programmable | SoA | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
+        "Fully programmable | AoS | v(r32f) n(r32f)     | image        | %8llu microseconds",
+        "Fully programmable | SoA | v(r32f) n(r32f)     | image        | %8llu microseconds",
+        "Fully programmable | AoS | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
+        "Fully programmable | SoA | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
     };
 
     double then = glfwGetTime();
     bool animate = true;
 
+    uint64_t lastTimes[buddha::NUMBER_OF_MODES] = {};
+
+    int currBenchmarkMode = buddha::NUMBER_OF_MODES;
+
+    const char* vendor = (const char*)glGetString(GL_VENDOR);
+    const char* renderer = (const char*)glGetString(GL_RENDERER);
+
     for (;;)
     {
+        if (currBenchmarkMode != buddha::NUMBER_OF_MODES)
+        {
+            g_VertexPullingMode = currBenchmarkMode;
+            currBenchmarkMode++;
+        }
+
         double now = glfwGetTime();
         double dtsec = now - then;
 
@@ -148,12 +161,33 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene(animate ? (float)dtsec : 0.0f, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 450.0f), ImGuiSetCond_Always);
+        lastTimes[g_VertexPullingMode] = elapsedNanoseconds;
+
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
-            ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
+            ImGui::Text("Vendor: %s", vendor);
+            ImGui::Text("Renderer: %s", renderer);
+
+            char modeStrings[buddha::NUMBER_OF_MODES][1024];
+            const char* modeStringPtrs[buddha::NUMBER_OF_MODES];
+            for (int i = 0; i < buddha::NUMBER_OF_MODES; i++)
+            {
+                sprintf(modeStrings[i], modeStringFormats[i], lastTimes[i] / 1000);
+                modeStringPtrs[i] = modeStrings[i];
+            }
+
+            ImGui::PushItemWidth(-1);
+            ImGui::ListBox("##Mode", &g_VertexPullingMode, modeStringPtrs, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
+            ImGui::PopItemWidth();
+
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
             ImGui::Checkbox("Animate", &animate);
+
+            if (ImGui::Button("Benchmark"))
+            {
+                currBenchmarkMode = 0;
+            }
         }
         ImGui::End();
 

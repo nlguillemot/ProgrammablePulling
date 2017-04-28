@@ -106,11 +106,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\common.frag" />
-    <None Include="shaders\fetcher.vert" />
+    <None Include="shaders\fetcher_aos.vert" />
     <None Include="shaders\fetcher_image_aos.vert" />
     <None Include="shaders\fetcher_image_soa.vert" />
-    <None Include="shaders\fixed.vert" />
-    <None Include="shaders\puller.vert" />
+    <None Include="shaders\fetcher_soa.vert" />
+    <None Include="shaders\fixed_aos.vert" />
+    <None Include="shaders\fixed_soa.vert" />
+    <None Include="shaders\puller_aos.vert" />
+    <None Include="shaders\puller_soa.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

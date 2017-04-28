@@ -24,9 +24,9 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw_gl3.h"
 
-#define MAIN_TITLE	"OpenGL 4.3 Buddha demo"
+#define MAIN_TITLE	"Programmable Pulling"
 
-static int g_VertexPullingMode = buddha::FIXED_FUNCTION_MODE;
+static int g_VertexPullingMode = buddha::FIXED_FUNCTION_AOS_MODE;
 
 static void errorCallback(int error, const char* description)
 {
@@ -110,11 +110,14 @@ int main()
 
     const char* modeStrings[buddha::NUMBER_OF_MODES] =
     {
-        "Fixed-function vertex pulling",
-        "Programmable attribute fetching",
+        "Fixed-function AoS vertex pulling",
+        "Fixed-function SoA vertex pulling",
+        "Programmable attribute AoS texture fetching",
+        "Programmable attribute SoA texture fetching",
         "Programmable attribute AoS image fetching",
         "Programmable attribute SoA image fetching",
-        "Fully programmable vertex pulling"
+        "Fully programmable AoS vertex pulling",
+        "Fully programmable SoA vertex pulling"
     };
 
     double then = glfwGetTime();
@@ -132,7 +135,7 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(475.0f, 150.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(500.0f, 200.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES);

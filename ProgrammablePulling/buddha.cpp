@@ -34,6 +34,7 @@ struct Vertex {
 };
 
 struct DrawCommand {
+    GLuint vertexArray;
 	bool useIndices;				// specifies whether this is an indexed draw command
 	GLenum prim_type;				// primitive type
 	union {
@@ -63,10 +64,27 @@ protected:
     GLuint indexBuffer;                     // index buffer for the mesh
     GLuint vertexBuffer;                    // vertex buffer for the mesh
 
-    GLuint vertexArray;                     // vertex array for the three vertex pulling modes
+    GLuint positionXBuffer;
+    GLuint positionYBuffer;
+    GLuint positionZBuffer;
+    GLuint normalXBuffer;
+    GLuint normalYBuffer;
+    GLuint normalZBuffer;
+
+    GLuint nullVertexArray;
+    GLuint vertexArrayIndexBufferOnly;
+    GLuint vertexArrayAoS;                     // vertex array for the three vertex pulling modes
+    GLuint vertexArraySoA;                     // vertex array for the three vertex pulling modes
 
     GLuint indexTexBuffer;                  // index buffer texture
     GLuint vertexTexBuffer;                 // vertex buffer texture
+
+    GLuint positionXTexBuffer;
+    GLuint positionYTexBuffer;
+    GLuint positionZTexBuffer;
+    GLuint normalXTexBuffer;
+    GLuint normalYTexBuffer;
+    GLuint normalZTexBuffer;
 
     GLuint timeElapsedQuery;                // query object for the time taken to render the scene
 
@@ -121,7 +139,7 @@ void BuddhaDemo::loadModels() {
 
     std::cout << "> Uploading mesh data to GPU..." << std::endl;
 
-	// create empty index buffer
+	// create index buffer
 	GLsizei indexBufferSize = (GLsizei)(buddhaObj.Indices.size() * sizeof(GLuint));
 	glGenBuffers(1, &indexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, indexBuffer);
@@ -137,7 +155,7 @@ void BuddhaDemo::loadModels() {
 	glUnmapBuffer(GL_ARRAY_BUFFER);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// create empty vertex buffer
+	// create AoS vertex buffer
     GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(Vertex));
 	glGenBuffers(1, &vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
@@ -159,9 +177,57 @@ void BuddhaDemo::loadModels() {
 	glUnmapBuffer(GL_ARRAY_BUFFER);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// setup vertex array
-	glGenVertexArrays(1, &vertexArray);
-	glBindVertexArray(vertexArray);
+    // SoA buffers
+    for (size_t soaIdx = 0; soaIdx < 6; soaIdx++)
+    {
+        GLuint* pVertexBuffer =
+            soaIdx == 0 ? &positionXBuffer :
+            soaIdx == 1 ? &positionYBuffer :
+            soaIdx == 2 ? &positionZBuffer :
+            soaIdx == 3 ? &normalXBuffer   :
+            soaIdx == 4 ? &normalYBuffer   :
+            soaIdx == 5 ? &normalZBuffer   :
+            NULL;
+
+        // create empty vertex buffer
+        GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(float));
+        glGenBuffers(1, pVertexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
+        glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
+
+        // map vertex buffer and fill with data
+        float* buf = (float*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vertexBufferSize,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+        for (size_t i = 0; i < buddhaObj.Positions.size(); i++) {
+            buf[i] =
+                soaIdx == 0 ? buddhaObj.Positions[i].x :
+                soaIdx == 1 ? buddhaObj.Positions[i].y :
+                soaIdx == 2 ? buddhaObj.Positions[i].z :
+                soaIdx == 3 ? buddhaObj.Normals[i].x   :
+                soaIdx == 4 ? buddhaObj.Normals[i].y   :
+                soaIdx == 5 ? buddhaObj.Normals[i].z   :
+                0.0f;
+        }
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+	// setup vertex arrays
+
+    glGenVertexArrays(1, &nullVertexArray);
+    glBindVertexArray(nullVertexArray);
+    // binding it just creates it...
+    glBindVertexArray(0);
+
+    glGenVertexArrays(1, &vertexArrayIndexBufferOnly);
+    glBindVertexArray(vertexArrayIndexBufferOnly);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindVertexArray(0);
+
+	glGenVertexArrays(1, &vertexArrayAoS);
+	glBindVertexArray(vertexArrayAoS);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 	glEnableVertexAttribArray(0);
@@ -170,29 +236,76 @@ void BuddhaDemo::loadModels() {
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glBindVertexArray(0);
 
-	// setup draw command for fixed-function vertex pulling
-	drawCmd[FIXED_FUNCTION_MODE].useIndices = true;
-	drawCmd[FIXED_FUNCTION_MODE].prim_type = GL_TRIANGLES;
-	drawCmd[FIXED_FUNCTION_MODE].indexOffset = 0;
-	drawCmd[FIXED_FUNCTION_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    glGenVertexArrays(1, &vertexArraySoA);
+    glBindVertexArray(vertexArraySoA);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, positionXBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, positionYBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, positionZBuffer);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalXBuffer);
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalYBuffer);
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalZBuffer);
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+    glBindVertexArray(0);
 
-	// setup draw command for programmable attribute fetching
-	drawCmd[FETCHER_MODE].useIndices = true;
-	drawCmd[FETCHER_MODE].prim_type = GL_TRIANGLES;
-	drawCmd[FETCHER_MODE].indexOffset = 0;
-	drawCmd[FETCHER_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
+	drawCmd[FIXED_FUNCTION_AOS_MODE].useIndices = true;
+	drawCmd[FIXED_FUNCTION_AOS_MODE].prim_type = GL_TRIANGLES;
+	drawCmd[FIXED_FUNCTION_AOS_MODE].indexOffset = 0;
+	drawCmd[FIXED_FUNCTION_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
-    // setup draw command for programmable attribute fetching with an image
+    drawCmd[FIXED_FUNCTION_SOA_MODE].vertexArray = vertexArraySoA;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].useIndices = true;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].indexOffset = 0;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_AOS_MODE].vertexArray = vertexArrayIndexBufferOnly;
+	drawCmd[FETCHER_AOS_MODE].useIndices = true;
+	drawCmd[FETCHER_AOS_MODE].prim_type = GL_TRIANGLES;
+	drawCmd[FETCHER_AOS_MODE].indexOffset = 0;
+	drawCmd[FETCHER_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SOA_MODE].useIndices = true;
+    drawCmd[FETCHER_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_SOA_MODE].indexOffset = 0;
+    drawCmd[FETCHER_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_IMAGE_AOS_MODE].vertexArray = vertexArrayIndexBufferOnly;
     drawCmd[FETCHER_IMAGE_AOS_MODE].useIndices = true;
     drawCmd[FETCHER_IMAGE_AOS_MODE].prim_type = GL_TRIANGLES;
     drawCmd[FETCHER_IMAGE_AOS_MODE].indexOffset = 0;
     drawCmd[FETCHER_IMAGE_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
-	// setup draw command for fully programmable vertex pulling
-	drawCmd[PULLER_MODE].useIndices = false;
-	drawCmd[PULLER_MODE].prim_type = GL_TRIANGLES;
-	drawCmd[PULLER_MODE].firstVertex = 0;
-	drawCmd[PULLER_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_IMAGE_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].useIndices = true;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].indexOffset = 0;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[PULLER_AOS_MODE].vertexArray = nullVertexArray;
+	drawCmd[PULLER_AOS_MODE].useIndices = false;
+	drawCmd[PULLER_AOS_MODE].prim_type = GL_TRIANGLES;
+	drawCmd[PULLER_AOS_MODE].firstVertex = 0;
+	drawCmd[PULLER_AOS_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[PULLER_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SOA_MODE].useIndices = false;
+    drawCmd[PULLER_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_SOA_MODE].firstVertex = 0;
+    drawCmd[PULLER_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
 
 	// create auxiliary texture buffers
 	glGenTextures(1, &indexTexBuffer);
@@ -204,6 +317,32 @@ void BuddhaDemo::loadModels() {
 	glBindTexture(GL_TEXTURE_BUFFER, vertexTexBuffer);
 	glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, vertexBuffer);
     glBindTexture(GL_TEXTURE_BUFFER, 0);
+
+    for (size_t soaIdx = 0; soaIdx < 6; soaIdx++)
+    {
+        GLuint* pVertexBuffer =
+            soaIdx == 0 ? &positionXBuffer :
+            soaIdx == 1 ? &positionYBuffer :
+            soaIdx == 2 ? &positionZBuffer :
+            soaIdx == 3 ? &normalXBuffer :
+            soaIdx == 4 ? &normalYBuffer :
+            soaIdx == 5 ? &normalZBuffer :
+            NULL;
+
+        GLuint* pVertexTexBuffer =
+            soaIdx == 0 ? &positionXTexBuffer :
+            soaIdx == 1 ? &positionYTexBuffer :
+            soaIdx == 2 ? &positionZTexBuffer :
+            soaIdx == 3 ? &normalXTexBuffer :
+            soaIdx == 4 ? &normalYTexBuffer :
+            soaIdx == 5 ? &normalZTexBuffer :
+            NULL;
+
+        glGenTextures(1, pVertexTexBuffer);
+        glBindTexture(GL_TEXTURE_BUFFER, *pVertexTexBuffer);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, *pVertexBuffer);
+        glBindTexture(GL_TEXTURE_BUFFER, 0);
+    }
 }
 
 GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shaderType) {
@@ -273,11 +412,17 @@ void BuddhaDemo::loadShaders() {
 	// load common fragment shader
 	fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER);
 
-	vertexProg[FIXED_FUNCTION_MODE] = loadShaderProgramFromFile("shaders/fixed.vert", GL_VERTEX_SHADER);
-	progPipeline[FIXED_FUNCTION_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_MODE], 0, fragmentProg);
+	vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+	progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, fragmentProg);
 
-	vertexProg[FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher.vert", GL_VERTEX_SHADER);
-	progPipeline[FETCHER_MODE] = createProgramPipeline(vertexProg[FETCHER_MODE], 0, fragmentProg);
+    vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
+
+	vertexProg[FETCHER_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos.vert", GL_VERTEX_SHADER);
+	progPipeline[FETCHER_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[FETCHER_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_MODE], 0, fragmentProg);
 
     vertexProg[FETCHER_IMAGE_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_MODE], 0, fragmentProg);
@@ -285,8 +430,11 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
 
-	vertexProg[PULLER_MODE] = loadShaderProgramFromFile("shaders/puller.vert", GL_VERTEX_SHADER);
-	progPipeline[PULLER_MODE] = createProgramPipeline(vertexProg[PULLER_MODE], 0, fragmentProg);
+	vertexProg[PULLER_AOS_MODE] = loadShaderProgramFromFile("shaders/puller_aos.vert", GL_VERTEX_SHADER);
+	progPipeline[PULLER_AOS_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SOA_MODE], 0, fragmentProg);
 }
 
 void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -328,11 +476,35 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_BUFFER, vertexTexBuffer);
 
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_BUFFER, positionXTexBuffer);
+
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_BUFFER, positionYTexBuffer);
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_BUFFER, positionZTexBuffer);
+
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_BUFFER, normalXTexBuffer);
+
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_BUFFER, normalYTexBuffer);
+
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_BUFFER, normalZTexBuffer);
+
     glBindImageTexture(1, vertexTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(2, positionXTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(3, positionYTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(4, positionZTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(5, normalXTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(6, normalYTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    glBindImageTexture(7, normalZTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);
 
-    glBindVertexArray(vertexArray);
+    glBindVertexArray(drawCmd[mode].vertexArray);
 
 	if (drawCmd[mode].useIndices) {
 		glDrawElements(drawCmd[mode].prim_type, drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + drawCmd[mode].indexOffset);

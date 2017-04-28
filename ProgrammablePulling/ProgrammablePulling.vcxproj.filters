@@ -54,19 +54,28 @@
     <None Include="shaders\common.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\fetcher.vert">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="shaders\puller.vert">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="shaders\fixed.vert">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="shaders\fetcher_image_soa.vert">
       <Filter>shaders</Filter>
     </None>
     <None Include="shaders\fetcher_image_aos.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_aos.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_soa.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_aos.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_soa.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fixed_aos.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fixed_soa.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

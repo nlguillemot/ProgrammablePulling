@@ -7,13 +7,12 @@ layout(std140, binding = 0) uniform transform {
 } Transform;
 
 layout(r32i, binding = 0) restrict readonly uniform iimageBuffer indexBuffer;
-layout(r32f, binding = 1) restrict readonly uniform imageBuffer attribBuffer;
-layout(r32f, binding = 2) restrict readonly uniform imageBuffer posXBuffer;
-layout(r32f, binding = 3) restrict readonly uniform imageBuffer posYBuffer;
-layout(r32f, binding = 4) restrict readonly uniform imageBuffer posZBuffer;
-layout(r32f, binding = 5) restrict readonly uniform imageBuffer normalXBuffer;
-layout(r32f, binding = 6) restrict readonly uniform imageBuffer normalYBuffer;
-layout(r32f, binding = 7) restrict readonly uniform imageBuffer normalZBuffer;
+layout(r32f, binding = 1) restrict readonly uniform imageBuffer posXBuffer;
+layout(r32f, binding = 2) restrict readonly uniform imageBuffer posYBuffer;
+layout(r32f, binding = 3) restrict readonly uniform imageBuffer posZBuffer;
+layout(r32f, binding = 4) restrict readonly uniform imageBuffer normalXBuffer;
+layout(r32f, binding = 5) restrict readonly uniform imageBuffer normalYBuffer;
+layout(r32f, binding = 6) restrict readonly uniform imageBuffer normalZBuffer;
 
 out vec3 outVertexNormal;
 
@@ -28,10 +27,11 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
-	vec3 inVertexNormal;
 	inVertexPosition.x = imageLoad(posXBuffer, inIndex).x; 
 	inVertexPosition.y = imageLoad(posYBuffer, inIndex).x; 
 	inVertexPosition.z = imageLoad(posZBuffer, inIndex).x; 
+	
+	vec3 inVertexNormal;
 	inVertexNormal.x   = imageLoad(normalXBuffer, inIndex).x; 
 	inVertexNormal.y   = imageLoad(normalYBuffer, inIndex).x; 
 	inVertexNormal.z   = imageLoad(normalZBuffer, inIndex).x; 

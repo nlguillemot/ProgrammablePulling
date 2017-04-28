@@ -6,13 +6,12 @@ layout(std140, binding = 0) uniform transform {
 	mat4 MVPMatrix;
 } Transform;
 
-layout(binding = 1) uniform samplerBuffer attribBuffer;
-layout(binding = 2) uniform samplerBuffer posXBuffer;
-layout(binding = 3) uniform samplerBuffer posYBuffer;
-layout(binding = 4) uniform samplerBuffer posZBuffer;
-layout(binding = 5) uniform samplerBuffer normalXBuffer;
-layout(binding = 6) uniform samplerBuffer normalYBuffer;
-layout(binding = 7) uniform samplerBuffer normalZBuffer;
+layout(binding = 0) uniform samplerBuffer posXBuffer;
+layout(binding = 1) uniform samplerBuffer posYBuffer;
+layout(binding = 2) uniform samplerBuffer posZBuffer;
+layout(binding = 3) uniform samplerBuffer normalXBuffer;
+layout(binding = 4) uniform samplerBuffer normalYBuffer;
+layout(binding = 5) uniform samplerBuffer normalZBuffer;
 
 out vec3 outVertexNormal;
 
@@ -24,10 +23,11 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
-	vec3 inVertexNormal;
 	inVertexPosition.x = texelFetch(posXBuffer, gl_VertexID).x; 
 	inVertexPosition.y = texelFetch(posYBuffer, gl_VertexID).x; 
 	inVertexPosition.z = texelFetch(posZBuffer, gl_VertexID).x; 
+	
+	vec3 inVertexNormal;
 	inVertexNormal.x   = texelFetch(normalXBuffer, gl_VertexID).x; 
 	inVertexNormal.y   = texelFetch(normalYBuffer, gl_VertexID).x; 
 	inVertexNormal.z   = texelFetch(normalZBuffer, gl_VertexID).x; 

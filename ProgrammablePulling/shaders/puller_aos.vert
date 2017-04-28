@@ -7,7 +7,8 @@ layout(std140, binding = 0) uniform transform {
 } Transform;
 
 layout(binding = 0) uniform isamplerBuffer indexBuffer;
-layout(binding = 1) uniform samplerBuffer attribBuffer;
+layout(binding = 1) uniform samplerBuffer positionBuffer;
+layout(binding = 2) uniform samplerBuffer normalBuffer;
 
 out vec3 outVertexNormal;
 
@@ -22,13 +23,14 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
+	inVertexPosition.x = texelFetch(positionBuffer, inIndex * 3 + 0).x; 
+	inVertexPosition.y = texelFetch(positionBuffer, inIndex * 3 + 1).x; 
+	inVertexPosition.z = texelFetch(positionBuffer, inIndex * 3 + 2).x; 
+	
 	vec3 inVertexNormal;
-	inVertexPosition.x = texelFetch(attribBuffer, inIndex * 6 + 0).x; 
-	inVertexPosition.y = texelFetch(attribBuffer, inIndex * 6 + 1).x; 
-	inVertexPosition.z = texelFetch(attribBuffer, inIndex * 6 + 2).x; 
-	inVertexNormal.x   = texelFetch(attribBuffer, inIndex * 6 + 3).x; 
-	inVertexNormal.y   = texelFetch(attribBuffer, inIndex * 6 + 4).x; 
-	inVertexNormal.z   = texelFetch(attribBuffer, inIndex * 6 + 5).x; 
+	inVertexNormal.x   = texelFetch(normalBuffer, inIndex * 3 + 0).x; 
+	inVertexNormal.y   = texelFetch(normalBuffer, inIndex * 3 + 1).x; 
+	inVertexNormal.z   = texelFetch(normalBuffer, inIndex * 3 + 2).x; 
 	
 	/* transform vertex and normal */
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;

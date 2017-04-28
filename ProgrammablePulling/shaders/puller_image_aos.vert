@@ -7,7 +7,8 @@ layout(std140, binding = 0) uniform transform {
 } Transform;
 
 layout(r32i, binding = 0) restrict readonly uniform iimageBuffer indexBuffer;
-layout(r32f, binding = 1) restrict readonly uniform imageBuffer attribBuffer;
+layout(r32f, binding = 1) restrict readonly uniform imageBuffer positionBuffer;
+layout(r32f, binding = 2) restrict readonly uniform imageBuffer normalBuffer;
 
 out vec3 outVertexNormal;
 
@@ -22,13 +23,14 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
+	inVertexPosition.x = imageLoad(positionBuffer, inIndex * 3 + 0).x; 
+	inVertexPosition.y = imageLoad(positionBuffer, inIndex * 3 + 1).x; 
+	inVertexPosition.z = imageLoad(positionBuffer, inIndex * 3 + 2).x; 
+	
 	vec3 inVertexNormal;
-	inVertexPosition.x = imageLoad(attribBuffer, inIndex * 6 + 0).x; 
-	inVertexPosition.y = imageLoad(attribBuffer, inIndex * 6 + 1).x; 
-	inVertexPosition.z = imageLoad(attribBuffer, inIndex * 6 + 2).x; 
-	inVertexNormal.x   = imageLoad(attribBuffer, inIndex * 6 + 3).x; 
-	inVertexNormal.y   = imageLoad(attribBuffer, inIndex * 6 + 4).x; 
-	inVertexNormal.z   = imageLoad(attribBuffer, inIndex * 6 + 5).x; 
+	inVertexNormal.x   = imageLoad(normalBuffer, inIndex * 3 + 0).x; 
+	inVertexNormal.y   = imageLoad(normalBuffer, inIndex * 3 + 1).x; 
+	inVertexNormal.z   = imageLoad(normalBuffer, inIndex * 3 + 2).x; 
 	
 	/* transform vertex and normal */
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;

@@ -6,7 +6,8 @@ layout(std140, binding = 0) uniform transform {
 	mat4 MVPMatrix;
 } Transform;
 
-layout(r32f, binding = 1) restrict readonly uniform imageBuffer attribBuffer;
+layout(r32f, binding = 0) restrict readonly uniform imageBuffer positionBuffer;
+layout(r32f, binding = 1) restrict readonly uniform imageBuffer normalBuffer;
 
 out vec3 outVertexNormal;
 
@@ -18,13 +19,14 @@ void main(void) {
 
 	/* fetch attributes from image buffer */
 	vec3 inVertexPosition;
+	inVertexPosition.x = imageLoad(positionBuffer, gl_VertexID * 3 + 0).x; 
+	inVertexPosition.y = imageLoad(positionBuffer, gl_VertexID * 3 + 1).x; 
+	inVertexPosition.z = imageLoad(positionBuffer, gl_VertexID * 3 + 2).x; 
+	
 	vec3 inVertexNormal;
-	inVertexPosition.x = imageLoad(attribBuffer, gl_VertexID * 6 + 0).x; 
-	inVertexPosition.y = imageLoad(attribBuffer, gl_VertexID * 6 + 1).x; 
-	inVertexPosition.z = imageLoad(attribBuffer, gl_VertexID * 6 + 2).x; 
-	inVertexNormal.x   = imageLoad(attribBuffer, gl_VertexID * 6 + 3).x; 
-	inVertexNormal.y   = imageLoad(attribBuffer, gl_VertexID * 6 + 4).x; 
-	inVertexNormal.z   = imageLoad(attribBuffer, gl_VertexID * 6 + 5).x; 
+	inVertexNormal.x   = imageLoad(normalBuffer, gl_VertexID * 3 + 0).x; 
+	inVertexNormal.y   = imageLoad(normalBuffer, gl_VertexID * 3 + 1).x; 
+	inVertexNormal.z   = imageLoad(normalBuffer, gl_VertexID * 3 + 2).x; 
 	
 	/* transform vertex and normal */
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;

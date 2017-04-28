@@ -7,13 +7,12 @@ layout(std140, binding = 0) uniform transform {
 } Transform;
 
 layout(binding = 0) uniform isamplerBuffer indexBuffer;
-layout(binding = 1) uniform samplerBuffer attribBuffer;
-layout(binding = 2) uniform samplerBuffer posXBuffer;
-layout(binding = 3) uniform samplerBuffer posYBuffer;
-layout(binding = 4) uniform samplerBuffer posZBuffer;
-layout(binding = 5) uniform samplerBuffer normalXBuffer;
-layout(binding = 6) uniform samplerBuffer normalYBuffer;
-layout(binding = 7) uniform samplerBuffer normalZBuffer;
+layout(binding = 1) uniform samplerBuffer posXBuffer;
+layout(binding = 2) uniform samplerBuffer posYBuffer;
+layout(binding = 3) uniform samplerBuffer posZBuffer;
+layout(binding = 4) uniform samplerBuffer normalXBuffer;
+layout(binding = 5) uniform samplerBuffer normalYBuffer;
+layout(binding = 6) uniform samplerBuffer normalZBuffer;
 
 out vec3 outVertexNormal;
 

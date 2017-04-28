@@ -6,7 +6,8 @@ layout(std140, binding = 0) uniform transform {
 	mat4 MVPMatrix;
 } Transform;
 
-layout(binding = 1) uniform samplerBuffer attribBuffer;
+layout(binding = 0) uniform samplerBuffer positionBuffer;
+layout(binding = 1) uniform samplerBuffer normalBuffer;
 
 out vec3 outVertexNormal;
 
@@ -18,13 +19,14 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
+	inVertexPosition.x = texelFetch(positionBuffer, gl_VertexID * 3 + 0).x; 
+	inVertexPosition.y = texelFetch(positionBuffer, gl_VertexID * 3 + 1).x; 
+	inVertexPosition.z = texelFetch(positionBuffer, gl_VertexID * 3 + 2).x; 
+	
 	vec3 inVertexNormal;
-	inVertexPosition.x = texelFetch(attribBuffer, gl_VertexID * 6 + 0).x; 
-	inVertexPosition.y = texelFetch(attribBuffer, gl_VertexID * 6 + 1).x; 
-	inVertexPosition.z = texelFetch(attribBuffer, gl_VertexID * 6 + 2).x; 
-	inVertexNormal.x   = texelFetch(attribBuffer, gl_VertexID * 6 + 3).x; 
-	inVertexNormal.y   = texelFetch(attribBuffer, gl_VertexID * 6 + 4).x; 
-	inVertexNormal.z   = texelFetch(attribBuffer, gl_VertexID * 6 + 5).x; 
+	inVertexNormal.x   = texelFetch(normalBuffer,   gl_VertexID * 3 + 0).x; 
+	inVertexNormal.y   = texelFetch(normalBuffer,   gl_VertexID * 3 + 1).x; 
+	inVertexNormal.z   = texelFetch(normalBuffer,   gl_VertexID * 3 + 2).x; 
 	
 	/* transform vertex and normal */
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;

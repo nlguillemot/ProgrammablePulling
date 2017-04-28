@@ -32,6 +32,8 @@ BuddhaDemo::BuddhaDemo() {
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    glGenQueries(1, &timeElapsedQuery);
+
 	loadShaders();
 	loadModels();
 
@@ -206,8 +208,10 @@ void BuddhaDemo::loadShaders() {
 
 }
 
-void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode) {
-
+void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
+{
+    glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
+    
 	// update camera position
 	cameraRotationFactor = fmodf(cameraRotationFactor + dtime * 0.3f, 2.f * (float)M_PI);
 	camera.position = glm::vec3(sin(cameraRotationFactor) * 5.f, 0.f, cos(cameraRotationFactor) * 5.f);
@@ -223,6 +227,8 @@ void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode) {
 	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     glClearDepth(1.f);
     glClearColor(0.f, 0.f, 0.f, 0.f);
@@ -245,13 +251,9 @@ void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode) {
     glBindVertexArray(vertexArray);
 
 	if (drawCmd[mode].useIndices) {
-
 		glDrawElements(drawCmd[mode].prim_type, drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + drawCmd[mode].indexOffset);
-
 	} else {
-
 		glDrawArrays(drawCmd[mode].prim_type, drawCmd[mode].firstVertex, drawCmd[mode].vertexCount);
-
 	}
 
     glBindVertexArray(0);
@@ -260,6 +262,11 @@ void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode) {
     glDisable(GL_FRAMEBUFFER_SRGB);
     glDisable(GL_DEPTH_TEST);
     glBindProgramPipeline(0);
+
+    glEndQuery(GL_TIME_ELAPSED);
+
+    if (elapsedNanoseconds)
+        glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
 }
 
 } /* namespace buddha */

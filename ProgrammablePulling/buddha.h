@@ -77,6 +77,8 @@ protected:
 	GLuint indexTexBuffer;					// index buffer texture
 	GLuint vertexTexBuffer;					// vertex buffer texture
 
+    GLuint timeElapsedQuery;                // query object for the time taken to render the scene
+
 	DrawCommand drawCmd[NUMBER_OF_MODES];	// draw command for the three vertex pulling modes
 
 	float cameraRotationFactor;		// camera rotation factor between [0,2*PI)
@@ -91,7 +93,7 @@ public:
 
 	BuddhaDemo();
 
-	void renderScene(float dtime, VertexPullingMode mode);
+	void renderScene(float dtime, VertexPullingMode mode, uint64_t* elapsedNanoseconds);
 
 };
 

@@ -30,7 +30,6 @@ void keyCallback(GLFWwindow*, int key, int scancode, int action, int mods)
         exit(0);
     }
 
-
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
     {
         g_VertexPullingMode = (buddha::VertexPullingMode)(((int)g_VertexPullingMode + 1) % buddha::NUMBER_OF_MODES);
@@ -46,6 +45,7 @@ int main() {
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GL_TRUE);
 
@@ -77,12 +77,6 @@ int main() {
 		return -1;
 	}
 
-	double frameTime = 0.01;
-	double lastFrameEndTime = glfwGetTime();
-	double lastFPSCaptureTime = glfwGetTime();
-    double currFPS = 0.0;
-	int framesSinceLastFPSCapture = 0;
-
 	buddha::BuddhaDemo demoScene;
 
 	const char modeString[buddha::NUMBER_OF_MODES][100] =
@@ -92,36 +86,35 @@ int main() {
 		"Fully programmable vertex pulling"
 	};
 
-	while (true)
+    double then = glfwGetTime();
+    uint64_t lastElapsedMilliseconds = -1;
+
+	for (;;)
     {
+        double now = glfwGetTime();
+        double dtsec = now - then;
+
         buddha::VertexPullingMode oldMode = g_VertexPullingMode;
-        double oldFPS = currFPS;
 
         // fires any pending event callbacks
         glfwPollEvents();
         
-        demoScene.renderScene((float)frameTime, g_VertexPullingMode);
+        uint64_t elapsedNanoseconds;
+        demoScene.renderScene((float)dtsec, g_VertexPullingMode, &elapsedNanoseconds);
 
-        framesSinceLastFPSCapture++;
+        uint64_t elapsedMicroseconds = elapsedNanoseconds / 1000;
 
-        // count the number of frames that passed in each second
-		if (glfwGetTime() - lastFPSCaptureTime > 1.0) {
-            currFPS = (double)framesSinceLastFPSCapture / (glfwGetTime() - lastFPSCaptureTime);
-            framesSinceLastFPSCapture = 0;
-            lastFPSCaptureTime = glfwGetTime();
-		}
-
-        if (g_VertexPullingMode != oldMode || currFPS != oldFPS)
+        if (g_VertexPullingMode != oldMode || elapsedMicroseconds != lastElapsedMilliseconds)
         {
             char title[512];
-            sprintf(title, "%s - %s (press SPACE to switch) - %.2lf fps", MAIN_TITLE, modeString[g_VertexPullingMode], currFPS);
+            sprintf(title, "%s - %s (press SPACE to switch) - %llu microseconds", MAIN_TITLE, modeString[g_VertexPullingMode], elapsedMicroseconds);
             glfwSetWindowTitle(window, title);
+
+            lastElapsedMilliseconds = elapsedMicroseconds;
         }
 
        	glfwSwapBuffers(window);
 
-       	double newFrameEnd = glfwGetTime();
-       	frameTime = newFrameEnd - lastFrameEndTime;
-        lastFrameEndTime = newFrameEnd;
+        then = now;
 	}
 }

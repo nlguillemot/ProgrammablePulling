@@ -9,34 +9,62 @@
 #include <sstream>
 #include <string>
 #include <cstdio>
+
+#ifdef _WIN32
+#include <d3d12.h>
+#include <dxgi1_5.h>
+#endif
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
 #include "wavefront.h"
 #include "buddha.h"
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw_gl3.h"
+
 #define MAIN_TITLE	"OpenGL 4.3 Buddha demo"
 
-static buddha::VertexPullingMode g_VertexPullingMode = buddha::FIXED_FUNCTION_MODE;
+static int g_VertexPullingMode = buddha::FIXED_FUNCTION_MODE;
 
-void closeCallback(GLFWwindow*)
+static void errorCallback(int error, const char* description)
+{
+    fprintf(stderr, "GLFW error %d: %s\n", error, description);
+    exit(-1);
+}
+
+static void closeCallback(GLFWwindow*)
 {
 	exit(0);
 }
 
-void keyCallback(GLFWwindow*, int key, int scancode, int action, int mods)
+#ifdef _WIN32
+void SetStablePowerState()
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    {
-        exit(0);
-    }
+    IDXGIFactory4* pDXGIFactory;
+    CreateDXGIFactory1(IID_PPV_ARGS(&pDXGIFactory));
 
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
-    {
-        g_VertexPullingMode = (buddha::VertexPullingMode)(((int)g_VertexPullingMode + 1) % buddha::NUMBER_OF_MODES);
-    }
+    IDXGIAdapter1* pDXGIAdapter;
+    pDXGIFactory->EnumAdapters1(0, &pDXGIAdapter);
+
+    ID3D12Device* pDevice;
+    D3D12CreateDevice(pDXGIAdapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&pDevice));
+    pDevice->SetStablePowerState(TRUE);
 }
+#else
+void SetStablePowerState()
+{
+    // I don't know how to do this on other platforms.
+}
+#endif
 
-int main() {
+int main() 
+{
+    // Set the GPU to a stable power state, in order to get reliable performance measurements.
+    SetStablePowerState();
+
+    glfwSetErrorCallback(errorCallback);
 
 	if (glfwInit() != GL_TRUE) {
 		std::cerr << "Error: unable to initialize GLFW" << std::endl;
@@ -46,7 +74,8 @@ int main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GL_TRUE);
 
 #ifdef _DEBUG
@@ -60,11 +89,8 @@ int main() {
 	}
 
     glfwSetWindowCloseCallback(window, closeCallback);
-    glfwSetKeyCallback(window, keyCallback);
 
     glfwMakeContextCurrent(window);
-
-    glfwShowWindow(window);
 
 	GLenum glewError;
 	if ((glewError = glewInit()) != GLEW_OK) {
@@ -77,9 +103,12 @@ int main() {
 		return -1;
 	}
 
+    // Setup ImGui binding
+    ImGui_ImplGlfwGL3_Init(window, true /* install callbacks */);
+
 	buddha::BuddhaDemo demoScene;
 
-	const char modeString[buddha::NUMBER_OF_MODES][100] =
+	const char* modeStrings[buddha::NUMBER_OF_MODES] =
 	{
 		"Fixed-function vertex pulling",
 		"Programmable attribute fetching",
@@ -88,31 +117,32 @@ int main() {
 	};
 
     double then = glfwGetTime();
-    uint64_t lastElapsedMilliseconds = -1;
 
 	for (;;)
     {
         double now = glfwGetTime();
         double dtsec = now - then;
 
-        buddha::VertexPullingMode oldMode = g_VertexPullingMode;
-
         // fires any pending event callbacks
         glfwPollEvents();
+
+        ImGui_ImplGlfwGL3_NewFrame();
         
         uint64_t elapsedNanoseconds;
-        demoScene.renderScene((float)dtsec, g_VertexPullingMode, &elapsedNanoseconds);
+        demoScene.renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        uint64_t elapsedMicroseconds = elapsedNanoseconds / 1000;
-
-        if (g_VertexPullingMode != oldMode || elapsedMicroseconds != lastElapsedMilliseconds)
+        ImGui::SetNextWindowSize(ImVec2(450.0f, 100.0f), ImGuiSetCond_Always);
+        if (ImGui::Begin("Info"))
         {
-            char title[512];
-            sprintf(title, "%s - %s (press SPACE to switch) - %llu microseconds", MAIN_TITLE, modeString[g_VertexPullingMode], elapsedMicroseconds);
-            glfwSetWindowTitle(window, title);
-
-            lastElapsedMilliseconds = elapsedMicroseconds;
+            ImGui::Combo("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES);
+            ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
         }
+        ImGui::End();
+
+        // Render GUI
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        ImGui::Render();
 
        	glfwSwapBuffers(window);
 

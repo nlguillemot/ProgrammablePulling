@@ -13,7 +13,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "wavefront.h"
-#include "tga.h"
 #include "buddha.h"
 
 namespace buddha {
@@ -220,8 +219,6 @@ void BuddhaDemo::loadShaders() {
 
 void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
 {
-    glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
-    
 	// update camera position
 	cameraRotationFactor = fmodf(cameraRotationFactor + dtsec * 0.3f, 2.f * (float)M_PI);
 	camera.position = glm::vec3(sin(cameraRotationFactor) * 5.f, 0.f, cos(cameraRotationFactor) * 5.f);
@@ -239,10 +236,13 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     glClearDepth(1.f);
     glClearColor(0.f, 0.f, 0.f, 0.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
 
     // render scene
     glBindProgramPipeline(progPipeline[mode]);

@@ -307,6 +307,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[PULLER_SOA_MODE].firstVertex = 0;
     drawCmd[PULLER_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
 
+    drawCmd[PULLER_IMAGE_AOS_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_IMAGE_AOS_MODE].useIndices = false;
+    drawCmd[PULLER_IMAGE_AOS_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_IMAGE_AOS_MODE].firstVertex = 0;
+    drawCmd[PULLER_IMAGE_AOS_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[PULLER_IMAGE_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_IMAGE_SOA_MODE].useIndices = false;
+    drawCmd[PULLER_IMAGE_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_IMAGE_SOA_MODE].firstVertex = 0;
+    drawCmd[PULLER_IMAGE_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+
 	// create auxiliary texture buffers
 	glGenTextures(1, &indexTexBuffer);
 	glBindTexture(GL_TEXTURE_BUFFER, indexTexBuffer);
@@ -435,6 +447,12 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[PULLER_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_soa.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SOA_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_IMAGE_AOS_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_IMAGE_AOS_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_image_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_SOA_MODE], 0, fragmentProg);
 }
 
 void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -494,6 +512,7 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_BUFFER, normalZTexBuffer);
 
+    glBindImageTexture(0, indexTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
     glBindImageTexture(1, vertexTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     glBindImageTexture(2, positionXTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     glBindImageTexture(3, positionYTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);

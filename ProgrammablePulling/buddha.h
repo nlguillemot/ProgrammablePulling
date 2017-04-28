@@ -25,6 +25,8 @@ enum VertexPullingMode
     FETCHER_IMAGE_SOA_MODE,  // programmable attribute fetching from an image instead of a texture in structure of arrays format
     PULLER_AOS_MODE,             // fully programmable vertex pulling
     PULLER_SOA_MODE,             // fully programmable vertex pulling
+    PULLER_IMAGE_AOS_MODE,             // fully programmable vertex pulling
+    PULLER_IMAGE_SOA_MODE,             // fully programmable vertex pulling
     NUMBER_OF_MODES
 };
 

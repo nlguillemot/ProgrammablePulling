@@ -110,14 +110,16 @@ int main()
 
     const char* modeStrings[buddha::NUMBER_OF_MODES] =
     {
-        "Fixed-function AoS vertex pulling",
-        "Fixed-function SoA vertex pulling",
-        "Programmable attribute AoS texture fetching",
-        "Programmable attribute SoA texture fetching",
-        "Programmable attribute AoS image fetching",
-        "Programmable attribute SoA image fetching",
-        "Fully programmable AoS vertex pulling",
-        "Fully programmable SoA vertex pulling"
+        "Fixed-function     | AoS | vertex array",
+        "Fixed-function     | SoA | vertex array",
+        "Programmable       | AoS | texture",
+        "Programmable       | SoA | texture",
+        "Programmable       | AoS | image",
+        "Programmable       | SoA | image",
+        "Fully programmable | AoS | texture",
+        "Fully programmable | SoA | texture",
+        "Fully programmable | AoS | image",
+        "Fully programmable | SoA | image"
     };
 
     double then = glfwGetTime();
@@ -135,10 +137,10 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene((float)dtsec, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(500.0f, 200.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(500.0f, 250.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
-            ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES);
+            ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
         }
         ImGui::End();

@@ -113,6 +113,8 @@
     <None Include="shaders\fixed_aos.vert" />
     <None Include="shaders\fixed_soa.vert" />
     <None Include="shaders\puller_aos.vert" />
+    <None Include="shaders\puller_image_aos.vert" />
+    <None Include="shaders\puller_image_soa.vert" />
     <None Include="shaders\puller_soa.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

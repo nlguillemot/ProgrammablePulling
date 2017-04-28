@@ -34,8 +34,13 @@ enum VertexPullingMode
     // read index buffer with gl_VertexID, then fetch attributes with result
     PULLER_AOS_MODE,
     PULLER_SOA_MODE,
+    PULLER_AOS_QUANTIZED_MODE,
+    PULLER_SOA_QUANTIZED_MODE,
     PULLER_IMAGE_AOS_MODE,
     PULLER_IMAGE_SOA_MODE,
+    PULLER_IMAGE_AOS_QUANTIZED_MODE,
+    PULLER_IMAGE_SOA_QUANTIZED_MODE,
+    //
     NUMBER_OF_MODES
 };
 

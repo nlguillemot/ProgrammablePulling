@@ -102,5 +102,17 @@
     <None Include="shaders\fetcher_image_soa_quantized.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\puller_aos_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_soa_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_image_aos_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_image_soa_quantized.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

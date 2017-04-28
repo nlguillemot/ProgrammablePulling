@@ -124,8 +124,12 @@ int main()
         "Programmable       | SoA | v(r32f) n(r8_snorm) | image",
         "Fully programmable | AoS | v(r32f) n(r32f)     | texture",
         "Fully programmable | SoA | v(r32f) n(r32f)     | texture",
+        "Fully programmable | AoS | v(r32f) n(r8_snorm) | texture",
+        "Fully programmable | SoA | v(r32f) n(r8_snorm) | texture",
         "Fully programmable | AoS | v(r32f) n(r32f)     | image",
-        "Fully programmable | SoA | v(r32f) n(r32f)     | image"
+        "Fully programmable | SoA | v(r32f) n(r32f)     | image",
+        "Fully programmable | AoS | v(r32f) n(r8_snorm) | image",
+        "Fully programmable | SoA | v(r32f) n(r8_snorm) | image",
     };
 
     double then = glfwGetTime();
@@ -144,7 +148,7 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene(animate ? (float)dtsec : 0.0f, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 350.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 450.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::ListBox("Mode", &g_VertexPullingMode, modeStrings, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);

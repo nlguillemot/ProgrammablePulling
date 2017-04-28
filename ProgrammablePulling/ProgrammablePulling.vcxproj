@@ -119,9 +119,13 @@
     <None Include="shaders\fixed_soa.vert" />
     <None Include="shaders\fixed_soa_quantized.vert" />
     <None Include="shaders\puller_aos.vert" />
+    <None Include="shaders\puller_aos_quantized.vert" />
     <None Include="shaders\puller_image_aos.vert" />
+    <None Include="shaders\puller_image_aos_quantized.vert" />
     <None Include="shaders\puller_image_soa.vert" />
+    <None Include="shaders\puller_image_soa_quantized.vert" />
     <None Include="shaders\puller_soa.vert" />
+    <None Include="shaders\puller_soa_quantized.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

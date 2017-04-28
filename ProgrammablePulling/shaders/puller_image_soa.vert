@@ -6,6 +6,14 @@ layout(std140, binding = 0) uniform transform {
 	mat4 MVPMatrix;
 } Transform;
 
+layout(r32i, binding = 0) restrict readonly uniform iimageBuffer indexBuffer;
+layout(r32f, binding = 1) restrict readonly uniform imageBuffer attribBuffer;
+layout(r32f, binding = 2) restrict readonly uniform imageBuffer posXBuffer;
+layout(r32f, binding = 3) restrict readonly uniform imageBuffer posYBuffer;
+layout(r32f, binding = 4) restrict readonly uniform imageBuffer posZBuffer;
+layout(r32f, binding = 5) restrict readonly uniform imageBuffer normalXBuffer;
+layout(r32f, binding = 6) restrict readonly uniform imageBuffer normalYBuffer;
+layout(r32f, binding = 7) restrict readonly uniform imageBuffer normalZBuffer;
 
 out vec3 outVertexNormal;
 
@@ -16,6 +24,7 @@ out gl_PerVertex {
 void main(void) {
 
 	/* fetch index from texture buffer */
+	int inIndex = imageLoad(indexBuffer, gl_VertexID).x;
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;

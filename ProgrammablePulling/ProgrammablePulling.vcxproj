@@ -109,7 +109,9 @@
     <None Include="shaders\fetcher_aos.vert" />
     <None Include="shaders\fetcher_aos_quantized.vert" />
     <None Include="shaders\fetcher_image_aos.vert" />
+    <None Include="shaders\fetcher_image_aos_quantized.vert" />
     <None Include="shaders\fetcher_image_soa.vert" />
+    <None Include="shaders\fetcher_image_soa_quantized.vert" />
     <None Include="shaders\fetcher_soa.vert" />
     <None Include="shaders\fetcher_soa_quantized.vert" />
     <None Include="shaders\fixed_aos.vert" />

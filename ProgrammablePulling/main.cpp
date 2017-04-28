@@ -120,6 +120,8 @@ int main()
         "Programmable       | SoA | v(r32f) n(r8_snorm) | texture",
         "Programmable       | AoS | v(r32f) n(r32f)     | image",
         "Programmable       | SoA | v(r32f) n(r32f)     | image",
+        "Programmable       | AoS | v(r32f) n(r8_snorm) | image",
+        "Programmable       | SoA | v(r32f) n(r8_snorm) | image",
         "Fully programmable | AoS | v(r32f) n(r32f)     | texture",
         "Fully programmable | SoA | v(r32f) n(r32f)     | texture",
         "Fully programmable | AoS | v(r32f) n(r32f)     | image",

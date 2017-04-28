@@ -452,6 +452,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[FETCHER_IMAGE_SOA_MODE].indexOffset = 0;
     drawCmd[FETCHER_IMAGE_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
+    drawCmd[FETCHER_IMAGE_AOS_QUANTIZED_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_IMAGE_AOS_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FETCHER_IMAGE_AOS_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_IMAGE_AOS_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FETCHER_IMAGE_AOS_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_IMAGE_SOA_QUANTIZED_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_IMAGE_SOA_QUANTIZED_MODE].useIndices = true;
+    drawCmd[FETCHER_IMAGE_SOA_QUANTIZED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_IMAGE_SOA_QUANTIZED_MODE].indexOffset = 0;
+    drawCmd[FETCHER_IMAGE_SOA_QUANTIZED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
     drawCmd[PULLER_AOS_MODE].vertexArray = nullVertexArray;
 	drawCmd[PULLER_AOS_MODE].useIndices = false;
 	drawCmd[PULLER_AOS_MODE].prim_type = GL_TRIANGLES;
@@ -642,6 +654,12 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
 
+    vertexProg[FETCHER_IMAGE_AOS_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_IMAGE_AOS_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_QUANTIZED_MODE], 0, fragmentProg);
+
+    vertexProg[FETCHER_IMAGE_SOA_QUANTIZED_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa_quantized.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_IMAGE_SOA_QUANTIZED_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_QUANTIZED_MODE], 0, fragmentProg);
+
 	vertexProg[PULLER_AOS_MODE] = loadShaderProgramFromFile("shaders/puller_aos.vert", GL_VERTEX_SHADER);
 	progPipeline[PULLER_AOS_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_MODE], 0, fragmentProg);
 
@@ -736,6 +754,20 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindImageTexture(3, normalXTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(4, normalYTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(5, normalZTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    }
+    else if (mode == FETCHER_IMAGE_AOS_QUANTIZED_MODE)
+    {
+        glBindImageTexture(0, positionTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(1, normalTexBufferQuantized, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
+    }
+    else if (mode == FETCHER_IMAGE_SOA_QUANTIZED_MODE)
+    {
+        glBindImageTexture(0, positionXTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(1, positionYTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(2, positionZTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(3, normalXTexBufferQuantized, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
+        glBindImageTexture(4, normalYTexBufferQuantized, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
+        glBindImageTexture(5, normalZTexBufferQuantized, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
     }
     else if (mode == PULLER_AOS_MODE)
     {

@@ -29,6 +29,8 @@ enum VertexPullingMode
     FETCHER_SOA_QUANTIZED_MODE,
     FETCHER_IMAGE_AOS_MODE,
     FETCHER_IMAGE_SOA_MODE,
+    FETCHER_IMAGE_AOS_QUANTIZED_MODE,
+    FETCHER_IMAGE_SOA_QUANTIZED_MODE,
     // read index buffer with gl_VertexID, then fetch attributes with result
     PULLER_AOS_MODE,
     PULLER_SOA_MODE,

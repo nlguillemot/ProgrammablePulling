@@ -51,50 +51,49 @@ struct DrawCommand {
 
 enum VertexPullingMode
 {
-	FFX_MODE,			// fixed-function vertex pulling
-	FETCHER_MODE,		// programmable attribute fetching
-	PULLER_MODE,		// fully programmable vertex pulling
+	FIXED_FUNCTION_MODE, // fixed-function vertex pulling
+	FETCHER_MODE,        // programmable attribute fetching
+    IMAGE_FETCHER_MODE,  // programmable attribute fetching from an image instead of a texture
+	PULLER_MODE,         // fully programmable vertex pulling
 	NUMBER_OF_MODES
 };
 
 class BuddhaDemo {
 protected:
 
-	Camera camera;							// camera data
+    Camera camera;                          // camera data
 
-	Transform transform;					// transformation data
-	GLuint transformUB;						// uniform buffer for the transformation
+    Transform transform;                    // transformation data
+    GLuint transformUB;                     // uniform buffer for the transformation
 
-	GLuint fragmentProg;					// common fragment shader program
-	GLuint vertexProg[NUMBER_OF_MODES];		// vertex shader programs for the three vertex pulling modes
-	GLuint progPipeline[NUMBER_OF_MODES];	// program pipelines for the three vertex pulling modes
+    GLuint fragmentProg;                    // common fragment shader program
+    GLuint vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
+    GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
 
-	GLuint indexBuffer;						// index buffer for the mesh
-	GLuint vertexBuffer;					// vertex buffer for the mesh
+    GLuint indexBuffer;                     // index buffer for the mesh
+    GLuint vertexBuffer;                    // vertex buffer for the mesh
 
-	GLuint vertexArray;						// vertex array for the three vertex pulling modes
+    GLuint vertexArray;                     // vertex array for the three vertex pulling modes
 
-	GLuint indexTexBuffer;					// index buffer texture
-	GLuint vertexTexBuffer;					// vertex buffer texture
+    GLuint indexTexBuffer;                  // index buffer texture
+    GLuint vertexTexBuffer;                 // vertex buffer texture
 
     GLuint timeElapsedQuery;                // query object for the time taken to render the scene
 
-	DrawCommand drawCmd[NUMBER_OF_MODES];	// draw command for the three vertex pulling modes
+    DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
 
-	float cameraRotationFactor;		// camera rotation factor between [0,2*PI)
+    float cameraRotationFactor;             // camera rotation factor between [0,2*PI)
 
-	void loadModels();
-	void loadShaders();
+    void loadModels();
+    void loadShaders();
 
-	GLuint loadShaderProgramFromFile(const char* filename, GLenum shaderType);
-	GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
+    GLuint loadShaderProgramFromFile(const char* filename, GLenum shaderType);
+    GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
 
 public:
+    BuddhaDemo();
 
-	BuddhaDemo();
-
-	void renderScene(float dtime, VertexPullingMode mode, uint64_t* elapsedNanoseconds);
-
+    void renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds);
 };
 
 } /* namespace buddha */

@@ -17,16 +17,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\common.fs">
+    <None Include="shaders\common.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\fetcher.vs">
+    <None Include="shaders\fetcher.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\ffx.vs">
+    <None Include="shaders\puller.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\puller.vs">
+    <None Include="shaders\fixed.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_image.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

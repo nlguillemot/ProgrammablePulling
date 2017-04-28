@@ -17,8 +17,14 @@ out gl_PerVertex {
 void main(void) {
 
 	/* fetch attributes from texture buffer */
-	vec3 inVertexPosition = texelFetch(attribBuffer, gl_VertexID * 2).xyz; 
-	vec3 inVertexNormal = texelFetch(attribBuffer, gl_VertexID * 2 + 1).xyz;
+	vec3 inVertexPosition;
+	vec3 inVertexNormal;
+	inVertexPosition.x = texelFetch(attribBuffer, gl_VertexID * 6 + 0).x; 
+	inVertexPosition.y = texelFetch(attribBuffer, gl_VertexID * 6 + 1).x; 
+	inVertexPosition.z = texelFetch(attribBuffer, gl_VertexID * 6 + 2).x; 
+	inVertexNormal.x   = texelFetch(attribBuffer, gl_VertexID * 6 + 3).x; 
+	inVertexNormal.y   = texelFetch(attribBuffer, gl_VertexID * 6 + 4).x; 
+	inVertexNormal.z   = texelFetch(attribBuffer, gl_VertexID * 6 + 5).x; 
 	
 	/* transform vertex and normal */
 	outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;

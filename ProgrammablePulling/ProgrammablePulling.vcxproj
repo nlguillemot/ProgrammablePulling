@@ -96,10 +96,11 @@
     <ClInclude Include="wavefront.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\common.fs" />
-    <None Include="shaders\fetcher.vs" />
-    <None Include="shaders\ffx.vs" />
-    <None Include="shaders\puller.vs" />
+    <None Include="shaders\common.frag" />
+    <None Include="shaders\fetcher.vert" />
+    <None Include="shaders\fetcher_image.vert" />
+    <None Include="shaders\fixed.vert" />
+    <None Include="shaders\puller.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

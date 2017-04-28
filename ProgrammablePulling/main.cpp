@@ -16,7 +16,7 @@
 
 #define MAIN_TITLE	"OpenGL 4.3 Buddha demo"
 
-static buddha::VertexPullingMode g_VertexPullingMode = buddha::FFX_MODE;
+static buddha::VertexPullingMode g_VertexPullingMode = buddha::FIXED_FUNCTION_MODE;
 
 void closeCallback(GLFWwindow*)
 {
@@ -83,6 +83,7 @@ int main() {
 	{
 		"Fixed-function vertex pulling",
 		"Programmable attribute fetching",
+        "Programmable attribute image fetching",
 		"Fully programmable vertex pulling"
 	};
 

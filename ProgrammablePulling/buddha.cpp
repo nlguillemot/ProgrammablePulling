@@ -98,16 +98,22 @@ void BuddhaDemo::loadModels() {
     glBindVertexArray(0);
 
 	// setup draw command for fixed-function vertex pulling
-	drawCmd[FFX_MODE].useIndices = true;
-	drawCmd[FFX_MODE].prim_type = GL_TRIANGLES;
-	drawCmd[FFX_MODE].indexOffset = 0;
-	drawCmd[FFX_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+	drawCmd[FIXED_FUNCTION_MODE].useIndices = true;
+	drawCmd[FIXED_FUNCTION_MODE].prim_type = GL_TRIANGLES;
+	drawCmd[FIXED_FUNCTION_MODE].indexOffset = 0;
+	drawCmd[FIXED_FUNCTION_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
 	// setup draw command for programmable attribute fetching
 	drawCmd[FETCHER_MODE].useIndices = true;
 	drawCmd[FETCHER_MODE].prim_type = GL_TRIANGLES;
 	drawCmd[FETCHER_MODE].indexOffset = 0;
 	drawCmd[FETCHER_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    // setup draw command for programmable attribute fetching with an image
+    drawCmd[IMAGE_FETCHER_MODE].useIndices = true;
+    drawCmd[IMAGE_FETCHER_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[IMAGE_FETCHER_MODE].indexOffset = 0;
+    drawCmd[IMAGE_FETCHER_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
 	// setup draw command for fully programmable vertex pulling
 	drawCmd[PULLER_MODE].useIndices = false;
@@ -123,7 +129,7 @@ void BuddhaDemo::loadModels() {
 
 	glGenTextures(1, &vertexTexBuffer);
 	glBindTexture(GL_TEXTURE_BUFFER, vertexTexBuffer);
-	glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32F, vertexBuffer);
+	glTexBuffer(GL_TEXTURE_BUFFER, GL_R32F, vertexBuffer);
     glBindTexture(GL_TEXTURE_BUFFER, 0);
 }
 
@@ -192,28 +198,32 @@ void BuddhaDemo::loadShaders() {
     std::cout << "> Loading shaders..." << std::endl;
 
 	// load common fragment shader
-	fragmentProg = loadShaderProgramFromFile("shaders/common.fs", GL_FRAGMENT_SHADER);
+	fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER);
 
 	// load fixed-function vertex pulling shader
-	vertexProg[FFX_MODE] = loadShaderProgramFromFile("shaders/ffx.vs", GL_VERTEX_SHADER);
-	progPipeline[FFX_MODE] = createProgramPipeline(vertexProg[FFX_MODE], 0, fragmentProg);
+	vertexProg[FIXED_FUNCTION_MODE] = loadShaderProgramFromFile("shaders/fixed.vert", GL_VERTEX_SHADER);
+	progPipeline[FIXED_FUNCTION_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_MODE], 0, fragmentProg);
 
 	// load programmable attribute fetching shader
-	vertexProg[FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher.vs", GL_VERTEX_SHADER);
+	vertexProg[FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher.vert", GL_VERTEX_SHADER);
 	progPipeline[FETCHER_MODE] = createProgramPipeline(vertexProg[FETCHER_MODE], 0, fragmentProg);
 
+    // load programmable attribute image fetching shader
+    vertexProg[IMAGE_FETCHER_MODE] = loadShaderProgramFromFile("shaders/fetcher_image.vert", GL_VERTEX_SHADER);
+    progPipeline[IMAGE_FETCHER_MODE] = createProgramPipeline(vertexProg[IMAGE_FETCHER_MODE], 0, fragmentProg);
+
 	// load fully programmable vertex pulling shader
-	vertexProg[PULLER_MODE] = loadShaderProgramFromFile("shaders/puller.vs", GL_VERTEX_SHADER);
+	vertexProg[PULLER_MODE] = loadShaderProgramFromFile("shaders/puller.vert", GL_VERTEX_SHADER);
 	progPipeline[PULLER_MODE] = createProgramPipeline(vertexProg[PULLER_MODE], 0, fragmentProg);
 
 }
 
-void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
+void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
 {
     glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
     
 	// update camera position
-	cameraRotationFactor = fmodf(cameraRotationFactor + dtime * 0.3f, 2.f * (float)M_PI);
+	cameraRotationFactor = fmodf(cameraRotationFactor + dtsec * 0.3f, 2.f * (float)M_PI);
 	camera.position = glm::vec3(sin(cameraRotationFactor) * 5.f, 0.f, cos(cameraRotationFactor) * 5.f);
 	camera.rotation = glm::vec3(0.f, -cameraRotationFactor, 0.f);
 
@@ -245,6 +255,8 @@ void BuddhaDemo::renderScene(float dtime, VertexPullingMode mode, uint64_t* elap
 
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_BUFFER, vertexTexBuffer);
+
+    glBindImageTexture(1, vertexTexBuffer, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);
 

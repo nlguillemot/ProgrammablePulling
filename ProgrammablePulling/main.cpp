@@ -177,9 +177,59 @@ int main()
                 modeStringPtrs[i] = modeStrings[i];
             }
 
+            struct items_getter_ctx
+            {
+                const char** modeStringPtrs;
+                uint64_t* lastTimes;
+                uint64_t bestTime;
+                uint64_t worstTime;
+            };
+
+            auto items_getter = [](void* ud, int choice, const char** out)
+            {
+                items_getter_ctx* ctx = (items_getter_ctx*)ud;
+
+                ImGuiStyle& style = ImGui::GetStyle();
+
+                if (ctx->lastTimes[choice] == 0)
+                {
+                    style.Colors[ImGuiCol_Text] = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    float goodness = 1.0f - (float(ctx->lastTimes[choice]) - float(ctx->bestTime)) / (float(ctx->worstTime) - float(ctx->bestTime));
+                    style.Colors[ImGuiCol_Text] = ImColor(powf(1.0f - goodness, 1.0f / 2.2f), powf(goodness, 1.0f / 2.2f), 0.0f, 1.0f);
+                }
+
+                *out = ctx->modeStringPtrs[choice];
+
+                return true;
+            };
+
+            items_getter_ctx getter_ctx;
+            getter_ctx.modeStringPtrs = modeStringPtrs;
+            getter_ctx.lastTimes = lastTimes;
+            getter_ctx.bestTime = 0;
+            getter_ctx.worstTime = 0;
+
+            for (uint64_t lastTime : lastTimes)
+            {
+                if (getter_ctx.bestTime == 0 || lastTime < getter_ctx.bestTime)
+                {
+                    getter_ctx.bestTime = lastTime;
+                }
+
+                if (getter_ctx.worstTime == 0 || lastTime > getter_ctx.worstTime)
+                {
+                    getter_ctx.worstTime = lastTime;
+                }
+            }
+
             ImGui::PushItemWidth(-1);
-            ImGui::ListBox("##Mode", &g_VertexPullingMode, modeStringPtrs, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
+            ImGui::ListBox("##Mode", &g_VertexPullingMode, items_getter, &getter_ctx, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
             ImGui::PopItemWidth();
+
+            ImGui::GetStyle().Colors[ImGuiCol_Text] = ImGuiStyle().Colors[ImGuiCol_Text];
 
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
             ImGui::Checkbox("Animate", &animate);

@@ -108,29 +108,26 @@ int main()
 
     std::shared_ptr<buddha::IBuddhaDemo> pDemo = buddha::IBuddhaDemo::Create();
 
-    const char* modeStringFormats[buddha::NUMBER_OF_MODES] =
+    const char* modeStringFormats[buddha::NUMBER_OF_MODES]  = {};
+    modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE      ] = "Fixed-function     | AoS | One XYZ attrib          | vertex array | %8llu microseconds";
+    modeStringFormats[buddha::FIXED_FUNCTION_SOA_MODE      ] = "Fixed-function     | SoA | Separate X/Y/Z attribs  | vertex array | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_AOS_1FETCH_MODE      ] = "Programmable       | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_AOS_3FETCH_MODE      ] = "Programmable       | AoS | Three R32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_SOA_MODE             ] = "Programmable       | SoA | Three R32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_IMAGE_AOS_1FETCH_MODE] = "Programmable       | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_IMAGE_AOS_3FETCH_MODE] = "Programmable       | AoS | Three R32F imageLoad    | image        | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_IMAGE_SOA_MODE       ] = "Programmable       | SoA | Three R32F imageLoad    | image        | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_AOS_1FETCH_MODE       ] = "Fully programmable | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_AOS_3FETCH_MODE       ] = "Fully programmable | AoS | Three R32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_SOA_MODE              ] = "Fully programmable | SoA | Three R32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_IMAGE_AOS_1FETCH_MODE ] = "Fully programmable | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_IMAGE_AOS_3FETCH_MODE ] = "Fully programmable | AoS | Three R32F imageLoad    | image        | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_IMAGE_SOA_MODE        ] = "Fully programmable | SoA | Three R32F imageLoad    | image        | %8llu microseconds";
+
+    for (const char* mode : modeStringFormats)
     {
-        "Fixed-function     | AoS | v(r32f) n(r32f)     | vertex array | %8llu microseconds",
-        "Fixed-function     | SoA | v(r32f) n(r32f)     | vertex array | %8llu microseconds",
-        "Fixed-function     | AoS | v(r32f) n(r8_snorm) | vertex array | %8llu microseconds",
-        "Fixed-function     | SoA | v(r32f) n(r8_snorm) | vertex array | %8llu microseconds",
-        "Programmable       | AoS | v(r32f) n(r32f)     | texture      | %8llu microseconds",
-        "Programmable       | SoA | v(r32f) n(r32f)     | texture      | %8llu microseconds",
-        "Programmable       | AoS | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
-        "Programmable       | SoA | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
-        "Programmable       | AoS | v(r32f) n(r32f)     | image        | %8llu microseconds",
-        "Programmable       | SoA | v(r32f) n(r32f)     | image        | %8llu microseconds",
-        "Programmable       | AoS | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
-        "Programmable       | SoA | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
-        "Fully programmable | AoS | v(r32f) n(r32f)     | texture      | %8llu microseconds",
-        "Fully programmable | SoA | v(r32f) n(r32f)     | texture      | %8llu microseconds",
-        "Fully programmable | AoS | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
-        "Fully programmable | SoA | v(r32f) n(r8_snorm) | texture      | %8llu microseconds",
-        "Fully programmable | AoS | v(r32f) n(r32f)     | image        | %8llu microseconds",
-        "Fully programmable | SoA | v(r32f) n(r32f)     | image        | %8llu microseconds",
-        "Fully programmable | AoS | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
-        "Fully programmable | SoA | v(r32f) n(r8_snorm) | image        | %8llu microseconds",
-    };
+        assert(mode != NULL);
+    }
 
     double then = glfwGetTime();
     bool animate = true;

@@ -20,15 +20,10 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
-	inVertexPosition.x = texelFetch(positionBuffer, gl_VertexID * 3 + 0).x; 
-	inVertexPosition.y = texelFetch(positionBuffer, gl_VertexID * 3 + 1).x; 
-	inVertexPosition.z = texelFetch(positionBuffer, gl_VertexID * 3 + 2).x; 
+	inVertexPosition.xyz = texelFetch(positionBuffer, gl_VertexID).xyz;
 	
-	// buffer textures don't support SNORM? :(
 	vec3 inVertexNormal;
-	inVertexNormal.x   = texelFetch(normalBuffer,   gl_VertexID * 3 + 0).x * 2.0 - 1.0; 
-	inVertexNormal.y   = texelFetch(normalBuffer,   gl_VertexID * 3 + 1).x * 2.0 - 1.0; 
-	inVertexNormal.z   = texelFetch(normalBuffer,   gl_VertexID * 3 + 2).x * 2.0 - 1.0; 
+	inVertexNormal.xyz = texelFetch(normalBuffer, gl_VertexID).xyz;
 	
 	/* transform vertex and normal */
 	outVertexPosition = (Transform.ModelViewMatrix * vec4(inVertexPosition, 1)).xyz;

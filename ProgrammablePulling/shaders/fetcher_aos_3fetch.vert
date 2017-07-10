@@ -20,7 +20,7 @@ void main(void) {
 
 	/* fetch attributes from texture buffer */
 	vec3 inVertexPosition;
-	inVertexPosition.x = texelFetch(positionBuffer, gl_VertexID * 3 + 0).x; 
+	inVertexPosition.x = texelFetch(positionBuffer, gl_VertexID * 3 + 0).x;
 	inVertexPosition.y = texelFetch(positionBuffer, gl_VertexID * 3 + 1).x; 
 	inVertexPosition.z = texelFetch(positionBuffer, gl_VertexID * 3 + 2).x; 
 	

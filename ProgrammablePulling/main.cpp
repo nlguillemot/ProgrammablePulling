@@ -146,15 +146,16 @@ int main()
 
     static const int kFramesPerBenchmarkMode = 30;
 
-    int currBenchmarkMode = buddha::NUMBER_OF_MODES;
+    int currBenchmarkMode = 0;
     int currBenchmarkFrame = 0;
+    bool nowBenchmarking = false;
 
     const char* vendor = (const char*)glGetString(GL_VENDOR);
     const char* renderer = (const char*)glGetString(GL_RENDERER);
 
     for (;;)
     {
-        if (currBenchmarkMode != buddha::NUMBER_OF_MODES)
+        if (nowBenchmarking)
         {
             g_VertexPullingMode = currBenchmarkMode;
             
@@ -272,14 +273,8 @@ int main()
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
             ImGui::Checkbox("Animate", &animate);
 
-            bool wasBenchmarking = currBenchmarkMode != buddha::NUMBER_OF_MODES;
-            bool nowBenchmarking = wasBenchmarking;
+            bool wasBenchmarking = nowBenchmarking;
             ImGui::Checkbox("Benchmark", &nowBenchmarking);
-            if (!wasBenchmarking && nowBenchmarking)
-            {
-                currBenchmarkMode = 0;
-                currBenchmarkFrame = 0;
-            }
 
             if (ImGui::Button("Reset Benchmarks"))
             {

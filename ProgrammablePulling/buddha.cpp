@@ -72,6 +72,7 @@ protected:
     GLuint nullVertexArray;
     GLuint vertexArrayIndexBufferOnly;
     GLuint vertexArrayAoS;
+    GLuint vertexArrayAoSXYZW;
     GLuint vertexArraySoA;
 
     // texture handles to the vertex buffers
@@ -304,15 +305,26 @@ void BuddhaDemo::loadModels() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
     glBindVertexArray(0);
 
-	glGenVertexArrays(1, &vertexArrayAoS);
-	glBindVertexArray(vertexArrayAoS);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+    glGenVertexArrays(1, &vertexArrayAoS);
+    glBindVertexArray(vertexArrayAoS);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-	glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+    glBindVertexArray(0);
+
+    glGenVertexArrays(1, &vertexArrayAoSXYZW);
+    glBindVertexArray(vertexArrayAoSXYZW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, positionBufferXYZW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
+    glBindBuffer(GL_ARRAY_BUFFER, normalBufferXYZW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
     glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArraySoA);
@@ -343,6 +355,12 @@ void BuddhaDemo::loadModels() {
     drawCmd[FIXED_FUNCTION_AOS_MODE].prim_type = GL_TRIANGLES;
     drawCmd[FIXED_FUNCTION_AOS_MODE].indexOffset = 0;
     drawCmd[FIXED_FUNCTION_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].vertexArray = vertexArrayAoSXYZW;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].useIndices = true;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].indexOffset = 0;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FIXED_FUNCTION_SOA_MODE].vertexArray = vertexArraySoA;
     drawCmd[FIXED_FUNCTION_SOA_MODE].useIndices = true;
@@ -574,6 +592,9 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[FIXED_FUNCTION_AOS_XYZW_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE], 0, fragmentProg);
 
     vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);

@@ -111,6 +111,7 @@ int main()
     const char* modeStringFormats[buddha::NUMBER_OF_MODES]  = {};
     const char* modeStringHeader                             = "Flexibility        | Layout | Detail                  | GL object | Average time      ";
     modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE      ] = "Fixed-function     |   AoS  | One XYZ attrib          | VAO       | %8llu microseconds";
+    modeStringFormats[buddha::FIXED_FUNCTION_AOS_XYZW_MODE ] = "Fixed-function     |   AoS  | XYZ attrib w/ align(16) | VAO       | %8llu microseconds";
     modeStringFormats[buddha::FIXED_FUNCTION_SOA_MODE      ] = "Fixed-function     |   SoA  | Separate X/Y/Z attribs  | VAO       | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_AOS_1RGBAFETCH_MODE  ] = "Programmable       |   AoS  | One RGBA32F texelFetch  | texture   | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_AOS_1RGBFETCH_MODE   ] = "Programmable       |   AoS  | One RGB32F texelFetch   | texture   | %8llu microseconds";
@@ -185,7 +186,7 @@ int main()
         numTimes[g_VertexPullingMode] += 1;
         totalTimes[g_VertexPullingMode] += elapsedNanoseconds;
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 550.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 600.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::Text("Vendor: %s", vendor);

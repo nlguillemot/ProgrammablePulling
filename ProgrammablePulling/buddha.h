@@ -19,6 +19,7 @@ enum VertexPullingMode
 {
     // fixed-function vertex pulling
     FIXED_FUNCTION_AOS_MODE,
+    FIXED_FUNCTION_AOS_XYZW_MODE,
     FIXED_FUNCTION_SOA_MODE,
     // fetch attributes using gl_VertexID from index buffer
     FETCHER_AOS_1RGBAFETCH_MODE,

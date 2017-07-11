@@ -117,12 +117,16 @@ int main()
     modeStringFormats[buddha::FETCHER_IMAGE_AOS_1FETCH_MODE] = "Programmable       | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_IMAGE_AOS_3FETCH_MODE] = "Programmable       | AoS | Three R32F imageLoad    | image        | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_IMAGE_SOA_MODE       ] = "Programmable       | SoA | Three R32F imageLoad    | image        | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_SSBO_AOS_MODE        ] = "Programmable       | AoS | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_SSBO_SOA_MODE        ] = "Programmable       | SoA | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
     modeStringFormats[buddha::PULLER_AOS_1FETCH_MODE       ] = "Fully programmable | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_AOS_3FETCH_MODE       ] = "Fully programmable | AoS | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_SOA_MODE              ] = "Fully programmable | SoA | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_IMAGE_AOS_1FETCH_MODE ] = "Fully programmable | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
     modeStringFormats[buddha::PULLER_IMAGE_AOS_3FETCH_MODE ] = "Fully programmable | AoS | Three R32F imageLoad    | image        | %8llu microseconds";
     modeStringFormats[buddha::PULLER_IMAGE_SOA_MODE        ] = "Fully programmable | SoA | Three R32F imageLoad    | image        | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_SSBO_AOS_MODE         ] = "Fully programmable | AoS | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_SSBO_SOA_MODE         ] = "Fully programmable | SoA | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
 
     for (const char* mode : modeStringFormats)
     {

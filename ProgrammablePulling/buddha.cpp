@@ -376,6 +376,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[FETCHER_IMAGE_SOA_MODE].indexOffset = 0;
     drawCmd[FETCHER_IMAGE_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
+    drawCmd[FETCHER_SSBO_AOS_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SSBO_AOS_MODE].useIndices = true;
+    drawCmd[FETCHER_SSBO_AOS_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_SSBO_AOS_MODE].indexOffset = 0;
+    drawCmd[FETCHER_SSBO_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FETCHER_SSBO_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SSBO_SOA_MODE].useIndices = true;
+    drawCmd[FETCHER_SSBO_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_SSBO_SOA_MODE].indexOffset = 0;
+    drawCmd[FETCHER_SSBO_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
     drawCmd[PULLER_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
     drawCmd[PULLER_AOS_1FETCH_MODE].useIndices = false;
     drawCmd[PULLER_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
@@ -401,6 +413,18 @@ void BuddhaDemo::loadModels() {
     drawCmd[PULLER_IMAGE_SOA_MODE].prim_type = GL_TRIANGLES;
     drawCmd[PULLER_IMAGE_SOA_MODE].firstVertex = 0;
     drawCmd[PULLER_IMAGE_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[PULLER_SSBO_AOS_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SSBO_AOS_MODE].useIndices = false;
+    drawCmd[PULLER_SSBO_AOS_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_SSBO_AOS_MODE].firstVertex = 0;
+    drawCmd[PULLER_SSBO_AOS_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[PULLER_SSBO_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SSBO_SOA_MODE].useIndices = false;
+    drawCmd[PULLER_SSBO_SOA_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_SSBO_SOA_MODE].firstVertex = 0;
+    drawCmd[PULLER_SSBO_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
 
     // create auxiliary texture buffers
     glGenTextures(1, &indexTexBufferR32I);
@@ -568,6 +592,12 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
 
+    vertexProg[FETCHER_SSBO_AOS_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_SSBO_AOS_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[FETCHER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_SOA_MODE], 0, fragmentProg);
+
     vertexProg[PULLER_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1FETCH_MODE], 0, fragmentProg);
 
@@ -585,6 +615,12 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[PULLER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_image_soa.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_SOA_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_SSBO_AOS_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_SSBO_AOS_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_soa.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
 }
 
 void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -665,6 +701,20 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindImageTexture(4, normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(5, normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
+    else if (mode == FETCHER_SSBO_AOS_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, normalBuffer);
+    }
+    else if (mode == FETCHER_SSBO_SOA_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, positionZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, normalYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, normalZBuffer);
+    }
     else if (mode == PULLER_AOS_1FETCH_MODE)
     {
         bindBufferTextureUnit(0, indexTexBufferR32I);
@@ -708,6 +758,22 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindImageTexture(4, normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(5, normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
         glBindImageTexture(6, normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+    }
+    else if (mode == PULLER_SSBO_AOS_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, normalBuffer);
+    }
+    else if (mode == PULLER_SSBO_SOA_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, positionYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, positionZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, normalXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, normalYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, normalZBuffer);
     }
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);

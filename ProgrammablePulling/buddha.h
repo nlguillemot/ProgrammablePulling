@@ -27,6 +27,8 @@ enum VertexPullingMode
     FETCHER_IMAGE_AOS_1FETCH_MODE,
     FETCHER_IMAGE_AOS_3FETCH_MODE,
     FETCHER_IMAGE_SOA_MODE,
+    FETCHER_SSBO_AOS_MODE,
+    FETCHER_SSBO_SOA_MODE,
     // read index buffer with gl_VertexID, then fetch attributes with result
     PULLER_AOS_1FETCH_MODE,
     PULLER_AOS_3FETCH_MODE,
@@ -34,6 +36,8 @@ enum VertexPullingMode
     PULLER_IMAGE_AOS_1FETCH_MODE,
     PULLER_IMAGE_AOS_3FETCH_MODE,
     PULLER_IMAGE_SOA_MODE,
+    PULLER_SSBO_AOS_MODE,
+    PULLER_SSBO_SOA_MODE,
     //
     NUMBER_OF_MODES
 };

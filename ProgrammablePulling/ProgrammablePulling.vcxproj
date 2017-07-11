@@ -112,7 +112,8 @@
     <None Include="shaders\fetcher_image_aos_3fetch.vert" />
     <None Include="shaders\fetcher_image_soa.vert" />
     <None Include="shaders\fetcher_soa.vert" />
-    <None Include="shaders\fetcher_ssbo_aos.vert" />
+    <None Include="shaders\fetcher_ssbo_aos_1fetch.vert" />
+    <None Include="shaders\fetcher_ssbo_aos_3fetch.vert" />
     <None Include="shaders\fetcher_ssbo_soa.vert" />
     <None Include="shaders\fixed_aos.vert" />
     <None Include="shaders\fixed_soa.vert" />
@@ -122,7 +123,8 @@
     <None Include="shaders\puller_image_aos_3fetch.vert" />
     <None Include="shaders\puller_image_soa.vert" />
     <None Include="shaders\puller_soa.vert" />
-    <None Include="shaders\puller_ssbo_aos.vert" />
+    <None Include="shaders\puller_ssbo_aos_1fetch.vert" />
+    <None Include="shaders\puller_ssbo_aos_3fetch.vert" />
     <None Include="shaders\puller_ssbo_soa.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

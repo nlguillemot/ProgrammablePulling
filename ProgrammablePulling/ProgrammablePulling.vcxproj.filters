@@ -96,16 +96,22 @@
     <None Include="shaders\puller_image_aos_3fetch.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\fetcher_ssbo_aos.vert">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="shaders\fetcher_ssbo_soa.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\puller_ssbo_aos.vert">
+    <None Include="shaders\puller_ssbo_soa.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\puller_ssbo_soa.vert">
+    <None Include="shaders\fetcher_ssbo_aos_3fetch.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_ssbo_aos_3fetch.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\fetcher_ssbo_aos_1fetch.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\puller_ssbo_aos_1fetch.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

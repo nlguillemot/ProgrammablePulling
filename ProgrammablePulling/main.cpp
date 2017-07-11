@@ -111,7 +111,8 @@ int main()
     const char* modeStringFormats[buddha::NUMBER_OF_MODES]  = {};
     modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE      ] = "Fixed-function     | AoS | One XYZ attrib          | vertex array | %8llu microseconds";
     modeStringFormats[buddha::FIXED_FUNCTION_SOA_MODE      ] = "Fixed-function     | SoA | Separate X/Y/Z attribs  | vertex array | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_AOS_1FETCH_MODE      ] = "Programmable       | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_AOS_1RGBAFETCH_MODE  ] = "Programmable       | AoS | One RGBA32F texelFetch  | texture      | %8llu microseconds";
+    modeStringFormats[buddha::FETCHER_AOS_1RGBFETCH_MODE   ] = "Programmable       | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_AOS_3FETCH_MODE      ] = "Programmable       | AoS | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_SOA_MODE             ] = "Programmable       | SoA | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_IMAGE_AOS_1FETCH_MODE] = "Programmable       | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
@@ -120,7 +121,8 @@ int main()
     modeStringFormats[buddha::FETCHER_SSBO_AOS_1FETCH_MODE ] = "Programmable       | AoS | One RGBA32F SSBO load   | SSBO         | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_SSBO_AOS_3FETCH_MODE ] = "Programmable       | AoS | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
     modeStringFormats[buddha::FETCHER_SSBO_SOA_MODE        ] = "Programmable       | SoA | Three R32F SSBO loads   | SSBO         | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_AOS_1FETCH_MODE       ] = "Fully programmable | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_AOS_1RGBAFETCH_MODE   ] = "Fully programmable | AoS | One RGBA32F texelFetch  | texture      | %8llu microseconds";
+    modeStringFormats[buddha::PULLER_AOS_1RGBFETCH_MODE    ] = "Fully programmable | AoS | One RGB32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_AOS_3FETCH_MODE       ] = "Fully programmable | AoS | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_SOA_MODE              ] = "Fully programmable | SoA | Three R32F texelFetch   | texture      | %8llu microseconds";
     modeStringFormats[buddha::PULLER_IMAGE_AOS_1FETCH_MODE ] = "Fully programmable | AoS | One RGBA32F imageLoad   | image        | %8llu microseconds";
@@ -138,9 +140,13 @@ int main()
     double then = glfwGetTime();
     bool animate = true;
 
-    uint64_t lastTimes[buddha::NUMBER_OF_MODES] = {};
+    uint64_t totalTimes[buddha::NUMBER_OF_MODES] = {};
+    int numTimes[buddha::NUMBER_OF_MODES] = {};
+
+    static const int kFramesPerBenchmarkMode = 30;
 
     int currBenchmarkMode = buddha::NUMBER_OF_MODES;
+    int currBenchmarkFrame = 0;
 
     const char* vendor = (const char*)glGetString(GL_VENDOR);
     const char* renderer = (const char*)glGetString(GL_RENDERER);
@@ -150,7 +156,12 @@ int main()
         if (currBenchmarkMode != buddha::NUMBER_OF_MODES)
         {
             g_VertexPullingMode = currBenchmarkMode;
-            currBenchmarkMode++;
+            currBenchmarkFrame++;
+            if (currBenchmarkFrame == kFramesPerBenchmarkMode)
+            {
+                currBenchmarkFrame = 0;
+                currBenchmarkMode++;
+            }
         }
 
         double now = glfwGetTime();
@@ -164,9 +175,10 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene(animate ? (float)dtsec : 0.0f, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
 
-        lastTimes[g_VertexPullingMode] = elapsedNanoseconds;
+        numTimes[g_VertexPullingMode] += 1;
+        totalTimes[g_VertexPullingMode] += elapsedNanoseconds;
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 500.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 550.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::Text("Vendor: %s", vendor);
@@ -176,14 +188,17 @@ int main()
             const char* modeStringPtrs[buddha::NUMBER_OF_MODES];
             for (int i = 0; i < buddha::NUMBER_OF_MODES; i++)
             {
-                sprintf(modeStrings[i], modeStringFormats[i], lastTimes[i] / 1000);
+                uint64_t lastTime;
+                lastTime = numTimes[i] == 0 ? 0 : totalTimes[i] / numTimes[i];
+                sprintf(modeStrings[i], modeStringFormats[i], lastTime / 1000);
                 modeStringPtrs[i] = modeStrings[i];
             }
 
             struct items_getter_ctx
             {
                 const char** modeStringPtrs;
-                uint64_t* lastTimes;
+                uint64_t* totalTimes;
+                int* numTimes;
                 uint64_t bestTime;
                 uint64_t worstTime;
             };
@@ -194,13 +209,14 @@ int main()
 
                 ImGuiStyle& style = ImGui::GetStyle();
 
-                if (ctx->lastTimes[choice] == 0)
+                if (ctx->numTimes[choice] == 0)
                 {
                     style.Colors[ImGuiCol_Text] = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
                 }
                 else
                 {
-                    float goodness = 1.0f - (float(ctx->lastTimes[choice]) - float(ctx->bestTime)) / (float(ctx->worstTime) - float(ctx->bestTime));
+                    float lastTime = ctx->numTimes[choice] == 0 ? 0.0f : float(ctx->totalTimes[choice] / ctx->numTimes[choice]);
+                    float goodness = 1.0f - (lastTime - float(ctx->bestTime)) / (float(ctx->worstTime) - float(ctx->bestTime));
                     style.Colors[ImGuiCol_Text] = ImColor(powf(1.0f - goodness, 1.0f / 2.2f), powf(goodness, 1.0f / 2.2f), 0.0f, 1.0f);
                 }
 
@@ -211,12 +227,24 @@ int main()
 
             items_getter_ctx getter_ctx;
             getter_ctx.modeStringPtrs = modeStringPtrs;
-            getter_ctx.lastTimes = lastTimes;
+            getter_ctx.totalTimes = totalTimes;
+            getter_ctx.numTimes = numTimes;
             getter_ctx.bestTime = 0;
             getter_ctx.worstTime = 0;
 
-            for (uint64_t lastTime : lastTimes)
+            for (int i = 0; i < buddha::NUMBER_OF_MODES; i++)
             {
+                uint64_t lastTime;
+
+                if (numTimes[i] == 0)
+                {
+                    lastTime = 0;
+                }
+                else
+                {
+                    lastTime = totalTimes[i] / numTimes[i];
+                }
+
                 if (getter_ctx.bestTime == 0 || lastTime < getter_ctx.bestTime)
                 {
                     getter_ctx.bestTime = lastTime;

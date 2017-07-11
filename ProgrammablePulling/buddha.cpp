@@ -350,12 +350,13 @@ void BuddhaDemo::loadModels() {
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexOffset = 0;
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FETCHER_AOS_1FETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_AOS_1FETCH_MODE].useIndices = true;
-    drawCmd[FETCHER_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_AOS_1FETCH_MODE].indexOffset = 0;
-    drawCmd[FETCHER_AOS_1FETCH_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
-    drawCmd[FETCHER_AOS_3FETCH_MODE] = drawCmd[FETCHER_AOS_1FETCH_MODE];
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].useIndices = true;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].indexOffset = 0;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_AOS_1RGBFETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
+    drawCmd[FETCHER_AOS_3FETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
 
     drawCmd[FETCHER_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
     drawCmd[FETCHER_SOA_MODE].useIndices = true;
@@ -389,12 +390,13 @@ void BuddhaDemo::loadModels() {
     drawCmd[FETCHER_SSBO_SOA_MODE].indexOffset = 0;
     drawCmd[FETCHER_SSBO_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[PULLER_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_AOS_1FETCH_MODE].useIndices = false;
-    drawCmd[PULLER_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_AOS_1FETCH_MODE].firstVertex = 0;
-    drawCmd[PULLER_AOS_1FETCH_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
-    drawCmd[PULLER_AOS_3FETCH_MODE] = drawCmd[PULLER_AOS_1FETCH_MODE];
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].useIndices = false;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].firstVertex = 0;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_AOS_1RGBFETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
+    drawCmd[PULLER_AOS_3FETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
 
     drawCmd[PULLER_SOA_MODE].vertexArray = nullVertexArray;
     drawCmd[PULLER_SOA_MODE].useIndices = false;
@@ -576,8 +578,11 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
-    progPipeline[FETCHER_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1FETCH_MODE], 0, fragmentProg);
+    vertexProg[FETCHER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
+
+    vertexProg[FETCHER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
+    progPipeline[FETCHER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
 
     vertexProg[FETCHER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_3fetch.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_3FETCH_MODE], 0, fragmentProg);
@@ -603,8 +608,11 @@ void BuddhaDemo::loadShaders() {
     vertexProg[FETCHER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
-    progPipeline[PULLER_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1FETCH_MODE], 0, fragmentProg);
+    vertexProg[PULLER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
 
     vertexProg[PULLER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_3fetch.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_3FETCH_MODE], 0, fragmentProg);
@@ -656,8 +664,6 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
     glClearColor(0.f, 0.f, 0.f, 0.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
-
     // render scene
     glBindProgramPipeline(progPipeline[mode]);
     glEnable(GL_DEPTH_TEST);
@@ -671,7 +677,12 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindTexture(GL_TEXTURE_BUFFER, textureBuffer);
     };
 
-    if (mode == FETCHER_AOS_1FETCH_MODE)
+    if (mode == FETCHER_AOS_1RGBAFETCH_MODE)
+    {
+        bindBufferTextureUnit(0, positionTexBufferRGBA32F);
+        bindBufferTextureUnit(1, normalTexBufferRGBA32F);
+    }
+    else if (mode == FETCHER_AOS_1RGBFETCH_MODE)
     {
         bindBufferTextureUnit(0, positionTexBufferRGB32F);
         bindBufferTextureUnit(1, normalTexBufferRGB32F);
@@ -728,7 +739,13 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, normalYBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, normalZBuffer);
     }
-    else if (mode == PULLER_AOS_1FETCH_MODE)
+    else if (mode == PULLER_AOS_1RGBAFETCH_MODE)
+    {
+        bindBufferTextureUnit(0, indexTexBufferR32I);
+        bindBufferTextureUnit(1, positionTexBufferRGBA32F);
+        bindBufferTextureUnit(2, normalTexBufferRGBA32F);
+    }
+    else if (mode == PULLER_AOS_1RGBFETCH_MODE)
     {
         bindBufferTextureUnit(0, indexTexBufferR32I);
         bindBufferTextureUnit(1, positionTexBufferRGB32F);
@@ -799,6 +816,8 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
 
     glBindVertexArray(drawCmd[mode].vertexArray);
 
+    glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
+
     if (drawCmd[mode].useIndices) {
         glDrawElements(drawCmd[mode].prim_type, drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + drawCmd[mode].indexOffset);
     }
@@ -806,14 +825,28 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glDrawArrays(drawCmd[mode].prim_type, drawCmd[mode].firstVertex, drawCmd[mode].vertexCount);
     }
 
+    glEndQuery(GL_TIME_ELAPSED);
+
     glBindVertexArray(0);
+    
+    // unbind all resources to attempt to prevent GL from thinking one resource is being used in 2 ways simultaneously.
+    for (int i = 0; i < 16; i++)
+    {
+        bindBufferTextureUnit(i, 0);
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        glBindImageTexture(i, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
+    }
 
     glDisable(GL_CULL_FACE);
     glDisable(GL_FRAMEBUFFER_SRGB);
     glDisable(GL_DEPTH_TEST);
     glBindProgramPipeline(0);
-
-    glEndQuery(GL_TIME_ELAPSED);
 
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);

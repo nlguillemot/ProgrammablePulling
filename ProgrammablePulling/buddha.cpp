@@ -57,7 +57,9 @@ protected:
     GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
 
     GLuint indexBuffer;                     // index buffer for the mesh
-    GLuint positionBuffer;                  // vertex buffer for the mesh
+    // vertex buffers for various settings
+    GLuint interleavedBuffer;
+    GLuint positionBuffer;
     GLuint normalBuffer;
     GLuint positionBufferXYZW;
     GLuint normalBufferXYZW;
@@ -71,6 +73,7 @@ protected:
 
     GLuint nullVertexArray;
     GLuint vertexArrayIndexBufferOnly;
+    GLuint vertexArrayInterleaved;
     GLuint vertexArrayAoS;
     GLuint vertexArrayAoSXYZW;
     GLuint vertexArraySoA;
@@ -157,6 +160,40 @@ void BuddhaDemo::loadModels() {
 
         for (size_t i = 0; i < buddhaObj.Indices.size(); i++)
             index[i] = buddhaObj.Indices[i];
+
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    struct Interleaved
+    {
+        glm::vec3 Position;
+        glm::vec3 Normal;
+    };
+    static_assert(sizeof(Interleaved) == sizeof(float) * 6, "assume tightly packed");
+
+    // AoS interleaved buffer
+    {
+        GLsizei interleavedBufferSize = (GLsizei)(
+            buddhaObj.Positions.size() * sizeof(glm::vec3) +
+            buddhaObj.Normals.size() * sizeof(glm::vec3));
+        glGenBuffers(1, &interleavedBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, interleavedBuffer);
+        glBufferData(GL_ARRAY_BUFFER, interleavedBufferSize, NULL, GL_STATIC_DRAW);
+
+        // map vertex buffer and fill with data
+        Interleaved* interleaved = (Interleaved*)glMapBufferRange(GL_ARRAY_BUFFER, 0, interleavedBufferSize,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+
+        for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
+        {
+            interleaved[i].Position[0] = buddhaObj.Positions[i][0];
+            interleaved[i].Position[1] = buddhaObj.Positions[i][1];
+            interleaved[i].Position[2] = buddhaObj.Positions[i][2];
+            interleaved[i].Normal[0] = buddhaObj.Normals[i][0];
+            interleaved[i].Normal[1] = buddhaObj.Normals[i][1];
+            interleaved[i].Normal[2] = buddhaObj.Normals[i][2];
+        }
 
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -305,6 +342,16 @@ void BuddhaDemo::loadModels() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
     glBindVertexArray(0);
 
+    glGenVertexArrays(1, &vertexArrayInterleaved);
+    glBindVertexArray(vertexArrayInterleaved);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, interleavedBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Position));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Normal));
+    glBindVertexArray(0);
+
     glGenVertexArrays(1, &vertexArrayAoS);
     glBindVertexArray(vertexArrayAoS);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -367,6 +414,12 @@ void BuddhaDemo::loadModels() {
     drawCmd[FIXED_FUNCTION_SOA_MODE].prim_type = GL_TRIANGLES;
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexOffset = 0;
     drawCmd[FIXED_FUNCTION_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].vertexArray = vertexArrayInterleaved;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].useIndices = true;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].indexOffset = 0;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
     drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].useIndices = true;
@@ -598,6 +651,9 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
+
+    vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+    progPipeline[FIXED_FUNCTION_INTERLEAVED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE], 0, fragmentProg);
 
     vertexProg[FETCHER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
     progPipeline[FETCHER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);

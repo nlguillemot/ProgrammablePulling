@@ -109,6 +109,25 @@ int main()
 
     std::shared_ptr<buddha::IBuddhaDemo> pDemo = buddha::IBuddhaDemo::Create();
 
+    std::cout << "> Loading models..." << std::endl;
+
+    std::vector<int> meshIDs;
+    std::vector<std::string> meshDisplayNames;
+
+    meshDisplayNames.push_back("buddha");
+    meshIDs.push_back(pDemo->addMesh("models/buddha.obj"));
+
+    meshDisplayNames.push_back("cache optimized buddha");
+    meshIDs.push_back(pDemo->addMesh("models/buddha-optimized.obj"));
+
+    std::vector<const char*> meshDisplayNamesCStrs;
+    for (const std::string& name : meshDisplayNames)
+    {
+        meshDisplayNamesCStrs.push_back(name.c_str());
+    }
+
+    int currMeshIndex = 0;
+
     const char* modeStringFormats[buddha::NUMBER_OF_MODES]  = {};
     const char* modeStringHeader                             = "Flexibility        | Layout | Detail                  | GL object | Average time      ";
     modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE        ] = "Fixed-function     |   AoS  | One XYZ attrib          | VAO       | %8llu microseconds";
@@ -144,8 +163,13 @@ int main()
     double then = glfwGetTime();
     bool animate = true;
 
-    uint64_t totalTimes[buddha::NUMBER_OF_MODES] = {};
-    int numTimes[buddha::NUMBER_OF_MODES] = {};
+    std::vector<std::vector<uint64_t>> meshTotalTimes;
+    std::vector<std::vector<int>> meshNumTimes;
+    for (size_t i = 0; i < meshIDs.size(); i++)
+    {
+        meshTotalTimes.push_back(std::vector<uint64_t>(buddha::NUMBER_OF_MODES, 0));
+        meshNumTimes.push_back(std::vector<int>(buddha::NUMBER_OF_MODES, 0));
+    }
 
     static const int kFramesPerBenchmarkMode = 30;
 
@@ -183,12 +207,19 @@ int main()
         ImGui_ImplGlfwGL3_NewFrame();
         
         uint64_t elapsedNanoseconds;
-        pDemo->renderScene(animate ? (float)dtsec : 0.0f, (buddha::VertexPullingMode)g_VertexPullingMode, &elapsedNanoseconds);
+        pDemo->renderScene(
+            meshIDs[currMeshIndex],
+            animate ? (float)dtsec : 0.0f, 
+            (buddha::VertexPullingMode)g_VertexPullingMode, 
+            &elapsedNanoseconds);
+
+        uint64_t* totalTimes = meshTotalTimes[currMeshIndex].data();
+        int* numTimes = meshNumTimes[currMeshIndex].data();
 
         numTimes[g_VertexPullingMode] += 1;
         totalTimes[g_VertexPullingMode] += elapsedNanoseconds;
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 600.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(700.0f, 650.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::Text("Vendor: %s", vendor);
@@ -274,6 +305,9 @@ int main()
             ImGui::GetStyle().Colors[ImGuiCol_Text] = ImGuiStyle().Colors[ImGuiCol_Text];
 
             ImGui::Text("Frame time: %8llu microseconds", elapsedNanoseconds / 1000);
+
+            ImGui::ListBox("Mesh", &currMeshIndex, meshDisplayNamesCStrs.data(), (int)meshDisplayNamesCStrs.size());
+
             ImGui::Checkbox("Animate", &animate);
 
             bool wasBenchmarking = nowBenchmarking;

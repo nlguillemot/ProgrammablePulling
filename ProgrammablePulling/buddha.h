@@ -53,7 +53,9 @@ class IBuddhaDemo
 public:
     static std::shared_ptr<IBuddhaDemo> Create();
 
-    virtual void renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
+    virtual int addMesh(const char* path) = 0;
+
+    virtual void renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
 };
 
 } /* namespace buddha */

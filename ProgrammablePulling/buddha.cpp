@@ -56,51 +56,57 @@ protected:
     GLuint vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
     GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
 
-    GLuint indexBuffer;                     // index buffer for the mesh
-    // vertex buffers for various settings
-    GLuint interleavedBuffer;
-    GLuint positionBuffer;
-    GLuint normalBuffer;
-    GLuint positionBufferXYZW;
-    GLuint normalBufferXYZW;
+    struct PerModel
+    {
+        GLuint indexBuffer;                     // index buffer for the mesh
+        // vertex buffers for various settings
+        GLuint interleavedBuffer;
+        GLuint positionBuffer;
+        GLuint normalBuffer;
+        GLuint positionBufferXYZW;
+        GLuint normalBufferXYZW;
 
-    GLuint positionXBuffer;
-    GLuint positionYBuffer;
-    GLuint positionZBuffer;
-    GLuint normalXBuffer;
-    GLuint normalYBuffer;
-    GLuint normalZBuffer;
+        GLuint positionXBuffer;
+        GLuint positionYBuffer;
+        GLuint positionZBuffer;
+        GLuint normalXBuffer;
+        GLuint normalYBuffer;
+        GLuint normalZBuffer;
 
-    GLuint nullVertexArray;
-    GLuint vertexArrayIndexBufferOnly;
-    GLuint vertexArrayInterleaved;
-    GLuint vertexArrayAoS;
-    GLuint vertexArrayAoSXYZW;
-    GLuint vertexArraySoA;
+        GLuint nullVertexArray;
+        GLuint vertexArrayIndexBufferOnly;
+        GLuint vertexArrayInterleaved;
+        GLuint vertexArrayAoS;
+        GLuint vertexArrayAoSXYZW;
+        GLuint vertexArraySoA;
 
-    // texture handles to the vertex buffers
-    GLuint indexTexBufferR32I;
-    GLuint positionTexBufferR32F;
-    GLuint normalTexBufferR32F;
-    GLuint positionTexBufferRGB32F;
-    GLuint normalTexBufferRGB32F;
-    GLuint positionTexBufferRGBA32F;
-    GLuint normalTexBufferRGBA32F;
+        // texture handles to the vertex buffers
+        GLuint indexTexBufferR32I;
+        GLuint positionTexBufferR32F;
+        GLuint normalTexBufferR32F;
+        GLuint positionTexBufferRGB32F;
+        GLuint normalTexBufferRGB32F;
+        GLuint positionTexBufferRGBA32F;
+        GLuint normalTexBufferRGBA32F;
 
-    GLuint positionXTexBufferR32F;
-    GLuint positionYTexBufferR32F;
-    GLuint positionZTexBufferR32F;
-    GLuint normalXTexBufferR32F;
-    GLuint normalYTexBufferR32F;
-    GLuint normalZTexBufferR32F;
+        GLuint positionXTexBufferR32F;
+        GLuint positionYTexBufferR32F;
+        GLuint positionZTexBufferR32F;
+        GLuint normalXTexBufferR32F;
+        GLuint normalYTexBufferR32F;
+        GLuint normalZTexBufferR32F;
+
+        DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
+
+        void load(const char* path);
+    };
+
+    std::vector<PerModel> models;
 
     GLuint timeElapsedQuery;                // query object for the time taken to render the scene
 
-    DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
-
     float cameraRotationFactor;             // camera rotation factor between [0,2*PI)
 
-    void loadModels();
     void loadShaders();
 
     GLuint loadShaderProgramFromFile(const char* filename, GLenum shaderType);
@@ -109,7 +115,9 @@ protected:
 public:
     BuddhaDemo();
 
-    void renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds);
+    int addMesh(const char* path) override;
+
+    void renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
 };
 
 std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
@@ -117,35 +125,9 @@ std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
     return std::make_shared<BuddhaDemo>();
 }
 
-BuddhaDemo::BuddhaDemo() {
-
-	std::cout << "> Initializing scene data..." << std::endl;
-
-	// initialize camera data
-	cameraRotationFactor = 0.f;
-	transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 40.f);
-
-	// create uniform buffer and store camera data
-	glGenBuffers(1, &transformUB);
-	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    glGenQueries(1, &timeElapsedQuery);
-
-	loadShaders();
-	loadModels();
-
-    std::cout << "> Done!" << std::endl;
-}
-
-void BuddhaDemo::loadModels() {
-
-    std::cout << "> Loading models..." << std::endl;
-
-	demo::WaveFrontObj buddhaObj("models/buddha.obj");
-
-    std::cout << "> Uploading mesh data to GPU..." << std::endl;
+void BuddhaDemo::PerModel::load(const char* path)
+{
+    demo::WaveFrontObj buddhaObj(path);
 
     // Index buffer
     {
@@ -573,6 +555,35 @@ void BuddhaDemo::loadModels() {
     }
 }
 
+BuddhaDemo::BuddhaDemo() {
+
+	std::cout << "> Initializing scene data..." << std::endl;
+
+	// initialize camera data
+	cameraRotationFactor = 0.f;
+	transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 40.f);
+
+	// create uniform buffer and store camera data
+	glGenBuffers(1, &transformUB);
+	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glGenQueries(1, &timeElapsedQuery);
+
+	loadShaders();
+
+    std::cout << "> Done!" << std::endl;
+}
+
+int BuddhaDemo::addMesh(const char* path)
+{
+    PerModel model;
+    model.load(path);
+    models.push_back(model);
+    return (int)models.size() - 1;
+}
+
 GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shaderType)
 {
     std::ifstream file(filename);
@@ -716,7 +727,7 @@ void BuddhaDemo::loadShaders() {
     progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
 }
 
-void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
+void BuddhaDemo::renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
 {
 	// update camera position
 	cameraRotationFactor = fmodf(cameraRotationFactor + dtsec * 0.3f, 2.f * (float)M_PI);
@@ -754,152 +765,154 @@ void BuddhaDemo::renderScene(float dtsec, VertexPullingMode mode, uint64_t* elap
         glBindTexture(GL_TEXTURE_BUFFER, textureBuffer);
     };
 
+    PerModel& model = models[meshID];
+
     if (mode == FETCHER_AOS_1RGBAFETCH_MODE)
     {
-        bindBufferTextureUnit(0, positionTexBufferRGBA32F);
-        bindBufferTextureUnit(1, normalTexBufferRGBA32F);
+        bindBufferTextureUnit(0, model.positionTexBufferRGBA32F);
+        bindBufferTextureUnit(1, model.normalTexBufferRGBA32F);
     }
     else if (mode == FETCHER_AOS_1RGBFETCH_MODE)
     {
-        bindBufferTextureUnit(0, positionTexBufferRGB32F);
-        bindBufferTextureUnit(1, normalTexBufferRGB32F);
+        bindBufferTextureUnit(0, model.positionTexBufferRGB32F);
+        bindBufferTextureUnit(1, model.normalTexBufferRGB32F);
     }
     else if (mode == FETCHER_AOS_3FETCH_MODE)
     {
-        bindBufferTextureUnit(0, positionTexBufferR32F);
-        bindBufferTextureUnit(1, normalTexBufferR32F);
+        bindBufferTextureUnit(0, model.positionTexBufferR32F);
+        bindBufferTextureUnit(1, model.normalTexBufferR32F);
     }
     else if (mode == FETCHER_SOA_MODE)
     {
-        bindBufferTextureUnit(0, positionXTexBufferR32F);
-        bindBufferTextureUnit(1, positionYTexBufferR32F);
-        bindBufferTextureUnit(2, positionZTexBufferR32F);
-        bindBufferTextureUnit(3, normalXTexBufferR32F);
-        bindBufferTextureUnit(4, normalYTexBufferR32F);
-        bindBufferTextureUnit(5, normalZTexBufferR32F);
+        bindBufferTextureUnit(0, model.positionXTexBufferR32F);
+        bindBufferTextureUnit(1, model.positionYTexBufferR32F);
+        bindBufferTextureUnit(2, model.positionZTexBufferR32F);
+        bindBufferTextureUnit(3, model.normalXTexBufferR32F);
+        bindBufferTextureUnit(4, model.normalYTexBufferR32F);
+        bindBufferTextureUnit(5, model.normalZTexBufferR32F);
     }
     else if (mode == FETCHER_IMAGE_AOS_1FETCH_MODE)
     {
-        glBindImageTexture(0, positionTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-        glBindImageTexture(1, normalTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        glBindImageTexture(0, model.positionTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        glBindImageTexture(1, model.normalTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     }
     else if (mode == FETCHER_IMAGE_AOS_3FETCH_MODE)
     {
-        glBindImageTexture(0, positionTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(1, normalTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(0, model.positionTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(1, model.normalTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
     else if (mode == FETCHER_IMAGE_SOA_MODE)
     {
-        glBindImageTexture(0, positionXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(1, positionYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(2, positionZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(3, normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(4, normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(5, normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(0, model.positionXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(1, model.positionYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(2, model.positionZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(3, model.normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(4, model.normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(5, model.normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
     else if (mode == FETCHER_SSBO_AOS_1FETCH_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionBufferXYZW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, normalBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.positionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.normalBufferXYZW);
     }
     else if (mode == FETCHER_SSBO_AOS_3FETCH_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, normalBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.positionBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.normalBuffer);
     }
     else if (mode == FETCHER_SSBO_SOA_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, positionXBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionYBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, positionZBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, normalXBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, normalYBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, normalZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.positionXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.positionYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.positionZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.normalXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, model.normalYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, model.normalZBuffer);
     }
     else if (mode == PULLER_AOS_1RGBAFETCH_MODE)
     {
-        bindBufferTextureUnit(0, indexTexBufferR32I);
-        bindBufferTextureUnit(1, positionTexBufferRGBA32F);
-        bindBufferTextureUnit(2, normalTexBufferRGBA32F);
+        bindBufferTextureUnit(0, model.indexTexBufferR32I);
+        bindBufferTextureUnit(1, model.positionTexBufferRGBA32F);
+        bindBufferTextureUnit(2, model.normalTexBufferRGBA32F);
     }
     else if (mode == PULLER_AOS_1RGBFETCH_MODE)
     {
-        bindBufferTextureUnit(0, indexTexBufferR32I);
-        bindBufferTextureUnit(1, positionTexBufferRGB32F);
-        bindBufferTextureUnit(2, normalTexBufferRGB32F);
+        bindBufferTextureUnit(0, model.indexTexBufferR32I);
+        bindBufferTextureUnit(1, model.positionTexBufferRGB32F);
+        bindBufferTextureUnit(2, model.normalTexBufferRGB32F);
     }
     else if (mode == PULLER_AOS_3FETCH_MODE)
     {
-        bindBufferTextureUnit(0, indexTexBufferR32I);
-        bindBufferTextureUnit(1, positionTexBufferR32F);
-        bindBufferTextureUnit(2, normalTexBufferR32F);
+        bindBufferTextureUnit(0, model.indexTexBufferR32I);
+        bindBufferTextureUnit(1, model.positionTexBufferR32F);
+        bindBufferTextureUnit(2, model.normalTexBufferR32F);
     }
     else if (mode == PULLER_SOA_MODE)
     {
-        bindBufferTextureUnit(0, indexTexBufferR32I);
-        bindBufferTextureUnit(1, positionXTexBufferR32F);
-        bindBufferTextureUnit(2, positionYTexBufferR32F);
-        bindBufferTextureUnit(3, positionZTexBufferR32F);
-        bindBufferTextureUnit(4, normalXTexBufferR32F);
-        bindBufferTextureUnit(5, normalYTexBufferR32F);
-        bindBufferTextureUnit(6, normalZTexBufferR32F);
+        bindBufferTextureUnit(0, model.indexTexBufferR32I);
+        bindBufferTextureUnit(1, model.positionXTexBufferR32F);
+        bindBufferTextureUnit(2, model.positionYTexBufferR32F);
+        bindBufferTextureUnit(3, model.positionZTexBufferR32F);
+        bindBufferTextureUnit(4, model.normalXTexBufferR32F);
+        bindBufferTextureUnit(5, model.normalYTexBufferR32F);
+        bindBufferTextureUnit(6, model.normalZTexBufferR32F);
     }
     else if (mode == PULLER_IMAGE_AOS_1FETCH_MODE)
     {
-        glBindImageTexture(0, indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-        glBindImageTexture(1, positionTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-        glBindImageTexture(2, normalTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        glBindImageTexture(0, model.indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+        glBindImageTexture(1, model.positionTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        glBindImageTexture(2, model.normalTexBufferRGBA32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     }
     else if (mode == PULLER_IMAGE_AOS_3FETCH_MODE)
     {
-        glBindImageTexture(0, indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-        glBindImageTexture(1, positionTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(2, normalTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(0, model.indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+        glBindImageTexture(1, model.positionTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(2, model.normalTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
     else if (mode == PULLER_IMAGE_SOA_MODE)
     {
-        glBindImageTexture(0, indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-        glBindImageTexture(1, positionXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(2, positionYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(3, positionZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(4, normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(5, normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-        glBindImageTexture(6, normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(0, model.indexTexBufferR32I, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+        glBindImageTexture(1, model.positionXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(2, model.positionYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(3, model.positionZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(4, model.normalXTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(5, model.normalYTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
+        glBindImageTexture(6, model.normalZTexBufferR32F, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
     }
     else if (mode == PULLER_SSBO_AOS_1FETCH_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indexBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionBufferXYZW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, normalBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.indexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.positionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.normalBufferXYZW);
     }
     else if (mode == PULLER_SSBO_AOS_3FETCH_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indexBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, normalBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.indexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.positionBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.normalBuffer);
     }
     else if (mode == PULLER_SSBO_SOA_MODE)
     {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, indexBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, positionXBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, positionYBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, positionZBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, normalXBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, normalYBuffer);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, normalZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.indexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.positionXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.positionYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.positionZBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, model.normalXBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, model.normalYBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, model.normalZBuffer);
     }
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);
 
-    glBindVertexArray(drawCmd[mode].vertexArray);
+    glBindVertexArray(model.drawCmd[mode].vertexArray);
 
     glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
 
-    if (drawCmd[mode].useIndices) {
-        glDrawElements(drawCmd[mode].prim_type, drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + drawCmd[mode].indexOffset);
+    if (model.drawCmd[mode].useIndices) {
+        glDrawElements(model.drawCmd[mode].prim_type, model.drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + model.drawCmd[mode].indexOffset);
     }
     else {
-        glDrawArrays(drawCmd[mode].prim_type, drawCmd[mode].firstVertex, drawCmd[mode].vertexCount);
+        glDrawArrays(model.drawCmd[mode].prim_type, model.drawCmd[mode].firstVertex, model.drawCmd[mode].vertexCount);
     }
 
     glEndQuery(GL_TIME_ELAPSED);

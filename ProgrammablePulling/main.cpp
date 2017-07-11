@@ -92,7 +92,8 @@ int main()
 
     glfwMakeContextCurrent(window);
 
-	GLenum glewError;
+    glewExperimental = GL_TRUE;
+    GLenum glewError;
 	if ((glewError = glewInit()) != GLEW_OK) {
         std::cerr << "Error: " << glewGetErrorString(glewError) << std::endl;
 		return -1;

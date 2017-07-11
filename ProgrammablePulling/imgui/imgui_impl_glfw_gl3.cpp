@@ -363,8 +363,7 @@ void ImGui_ImplGlfwGL3_NewFrame()
     int display_w, display_h;
     glfwGetWindowSize(g_Window, &w, &h);
     glfwGetFramebufferSize(g_Window, &display_w, &display_h);
-    io.DisplaySize = ImVec2((float)w, (float)h);
-    io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
+    io.DisplaySize = ImVec2((float)w / io.DisplayFramebufferScale.x, (float)h / io.DisplayFramebufferScale.y);
 
     // Setup time step
     double current_time =  glfwGetTime();
@@ -377,7 +376,7 @@ void ImGui_ImplGlfwGL3_NewFrame()
     {
         double mouse_x, mouse_y;
         glfwGetCursorPos(g_Window, &mouse_x, &mouse_y);
-        io.MousePos = ImVec2((float)mouse_x, (float)mouse_y);   // Mouse position in screen coordinates (set to -1,-1 if no mouse / on another screen, etc.)
+        io.MousePos = ImVec2((float)mouse_x / io.DisplayFramebufferScale.x, (float)mouse_y / io.DisplayFramebufferScale.y);   // Mouse position in screen coordinates (set to -1,-1 if no mouse / on another screen, etc.)
     }
     else
     {

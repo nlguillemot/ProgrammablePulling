@@ -117,7 +117,7 @@ public:
 
     int addMesh(const char* path) override;
 
-    void renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
+    void renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
 };
 
 std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
@@ -561,12 +561,11 @@ BuddhaDemo::BuddhaDemo() {
 
 	// initialize camera data
 	cameraRotationFactor = 0.f;
-	transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)SCREEN_WIDTH / SCREEN_HEIGHT, 0.1f, 40.f);
 
-	// create uniform buffer and store camera data
+	// create uniform buffer
 	glGenBuffers(1, &transformUB);
 	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glGenQueries(1, &timeElapsedQuery);
@@ -727,7 +726,7 @@ void BuddhaDemo::loadShaders() {
     progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
 }
 
-void BuddhaDemo::renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
+void BuddhaDemo::renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
 {
 	// update camera position
 	cameraRotationFactor = fmodf(cameraRotationFactor + dtsec * 0.3f, 2.f * (float)M_PI);
@@ -740,13 +739,14 @@ void BuddhaDemo::renderScene(int meshID, float dtsec, VertexPullingMode mode, ui
 	transform.ModelViewMatrix = glm::rotate(transform.ModelViewMatrix, camera.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	transform.ModelViewMatrix = glm::rotate(transform.ModelViewMatrix, camera.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 	transform.ModelViewMatrix = translate(transform.ModelViewMatrix, -camera.position);
+    transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)screenWidth / screenHeight, 0.1f, 40.f);
 	transform.MVPMatrix = transform.ProjectionMatrix * transform.ModelViewMatrix;
 	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glViewport(0, 0, screenWidth, screenHeight);
 
     glClearDepth(1.f);
     glClearColor(0.f, 0.f, 0.f, 0.f);

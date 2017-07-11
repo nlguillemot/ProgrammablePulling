@@ -10,8 +10,8 @@
 
 #include <memory>
 
-#define SCREEN_WIDTH         1024
-#define SCREEN_HEIGHT        768
+#define DEFAULT_SCREEN_WIDTH         1024
+#define DEFAULT_SCREEN_HEIGHT        768
 
 namespace buddha {
 
@@ -55,7 +55,7 @@ public:
 
     virtual int addMesh(const char* path) = 0;
 
-    virtual void renderScene(int meshID, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
+    virtual void renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
 };
 
 } /* namespace buddha */

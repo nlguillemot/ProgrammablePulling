@@ -82,11 +82,21 @@ int main()
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, MAIN_TITLE, NULL, NULL);
-	if (!window) {
+    int screenWidth = DEFAULT_SCREEN_WIDTH;
+    int screenHeight = DEFAULT_SCREEN_HEIGHT;
+
+#ifdef _WIN32
+    UINT dpi = GetDpiForSystem();
+    screenWidth = MulDiv(screenWidth, dpi, 96);
+    screenHeight = MulDiv(screenHeight, dpi, 96);
+    ImGui::GetIO().DisplayFramebufferScale = ImVec2(float(dpi) / 96.0f, float(dpi) / 96.0f);
+#endif
+
+    GLFWwindow* window = glfwCreateWindow(screenWidth, screenHeight, MAIN_TITLE, NULL, NULL);
+    if (!window) {
         std::cerr << "Error: unable to open GLFW window" << std::endl;
-		return -1;
-	}
+        return -1;
+    }
 
     glfwSetWindowCloseCallback(window, closeCallback);
 
@@ -209,6 +219,7 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene(
             meshIDs[currMeshIndex],
+            screenWidth, screenHeight,
             animate ? (float)dtsec : 0.0f, 
             (buddha::VertexPullingMode)g_VertexPullingMode, 
             &elapsedNanoseconds);
@@ -326,7 +337,7 @@ int main()
 
         // Render GUI
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        glViewport(0, 0, screenWidth, screenHeight);
         ImGui::Render();
 
        	glfwSwapBuffers(window);

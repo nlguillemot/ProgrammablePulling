@@ -40,11 +40,30 @@ WaveFrontObj::WaveFrontObj(const char* filename)
 		return;
 	}
 
+    printf("Loading mesh: %s\n", filename);
+
     std::vector<glm::vec3> unmerged_positions;
     std::vector<glm::vec3> unmerged_normals;
     std::set<IndexGroup> indexCache;
 
+    struct vec3compare {
+        constexpr bool operator()(const glm::vec3& a, const glm::vec3& b) const {
+            return std::make_tuple(a.x, a.y, a.z) < std::make_tuple(b.x, b.y, b.z);
+        }
+    };
+    std::set<glm::vec3, vec3compare> unique_positions;
+    std::set<glm::vec3, vec3compare> unique_normals;
+
     GLuint id = 0;
+
+    enum OBJFormat
+    {
+        OBJFormat_Unknown,
+        OBJFormat_V_N,
+        OBJFormat_VTN
+    };
+
+    OBJFormat format = OBJFormat_Unknown;
 
     std::string line;
     while (std::getline(file, line))
@@ -53,26 +72,42 @@ WaveFrontObj::WaveFrontObj(const char* filename)
             glm::vec3 v;
             sscanf(line.c_str(), "v %f %f %f", &v.x, &v.y, &v.z);
     		unmerged_positions.push_back(v);
+            unique_positions.insert(v);
     	} 
         else if (line.size() >= 2 && line[0] == 'v' && line[1] == 'n') {
             glm::vec3 vn;
             sscanf(line.c_str(), "vn %f %f %f", &vn.x, &vn.y, &vn.z);
     		unmerged_normals.push_back(vn);
+            unique_normals.insert(vn);
     	} 
         else if (line.size() >= 1 && line[0] == 'f') {
-            int ivs[3];
-            int ivns[3];
+            int ivs[4] = { 0, 0, 0, 0 };
+            int ivns[4] = { 0, 0, 0, 0 };
+            int ivts[4] = { 0, 0, 0, 0 };
             
-            sscanf(line.c_str(), "f %d//%d %d//%d %d//%d", &ivs[0], &ivns[0], &ivs[1], &ivns[1], &ivs[2], &ivns[2]);
+            if (format == OBJFormat_Unknown || format == OBJFormat_V_N)
+            {
+                if (sscanf(line.c_str(), "f %d//%d %d//%d %d//%d %d//%d", &ivs[0], &ivns[0], &ivs[1], &ivns[1], &ivs[2], &ivns[2], &ivs[3], &ivns[3]) >= 6)
+                {
+                    format = OBJFormat_V_N;
+                }
+            }
             
-            // some obj files have negative indices, which need to be handled specially.
-            assert(ivs[0] >= 1 && ivns[0] >= 1 && ivs[1] >= 1 && ivns[1] >= 1 && ivs[2] >= 1 && ivns[2] >= 1);
-
-            for (int i = 0; i < 3; i++) 
+            if (format == OBJFormat_Unknown || format == OBJFormat_VTN)
+            {
+                if (sscanf(line.c_str(), "f %d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d", &ivs[0], &ivts[0], &ivns[0], &ivs[1], &ivts[1], &ivns[1], &ivs[2], &ivts[2], &ivns[2], &ivs[3], &ivts[3], &ivns[3]) >= 9)
+                {
+                    format = OBJFormat_VTN;
+                }
+            }
+            
+            const int triangulation[] = { 0, 1, 2, 0, 2, 3 };
+            int numVerts = ivs[3] == 0 ? 3 : 6; // tri vs quad
+            for (int i = 0; i < numVerts; i++) 
             {
     			IndexGroup ig;
-    			ig.v = ivs[i];
-                ig.n = ivns[i];
+    			ig.v = ivs[triangulation[i]];
+                ig.n = ivns[triangulation[i]];
                 ig.i = id;
 
                 std::set<IndexGroup>::iterator it;
@@ -89,6 +124,9 @@ WaveFrontObj::WaveFrontObj(const char* filename)
     		}
     	}
     }
+
+    printf("unique positions: %zu\n", unique_positions.size());
+    printf("unique normals: %zu\n", unique_normals.size());
 }
 
 void WaveFrontObj::dump() {

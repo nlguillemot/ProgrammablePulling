@@ -8,6 +8,8 @@
 #ifndef BUDDHA_H_
 #define BUDDHA_H_
 
+#include <glm/glm.hpp>
+
 #include <memory>
 
 #define DEFAULT_SCREEN_WIDTH         1024
@@ -55,7 +57,7 @@ public:
 
     virtual int addMesh(const char* path) = 0;
 
-    virtual void renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
+    virtual void renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
 };
 
 } /* namespace buddha */

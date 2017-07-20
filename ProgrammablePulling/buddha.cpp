@@ -117,7 +117,7 @@ public:
 
     int addMesh(const char* path) override;
 
-    void renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
+    void renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
 };
 
 std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
@@ -726,7 +726,7 @@ void BuddhaDemo::loadShaders() {
     progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
 }
 
-void BuddhaDemo::renderScene(int meshID, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
+void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
 {
 	// update camera position
 	cameraRotationFactor = fmodf(cameraRotationFactor + dtsec * 0.3f, 2.f * (float)M_PI);
@@ -734,7 +734,7 @@ void BuddhaDemo::renderScene(int meshID, int screenWidth, int screenHeight, floa
 	camera.rotation = glm::vec3(0.f, -cameraRotationFactor, 0.f);
 
 	// update camera data to uniform buffer
-	transform.ModelViewMatrix = glm::mat4(1.0f);
+	transform.ModelViewMatrix = modelMatrix;
 	transform.ModelViewMatrix = glm::rotate(transform.ModelViewMatrix, camera.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
 	transform.ModelViewMatrix = glm::rotate(transform.ModelViewMatrix, camera.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
 	transform.ModelViewMatrix = glm::rotate(transform.ModelViewMatrix, camera.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -756,7 +756,6 @@ void BuddhaDemo::renderScene(int meshID, int screenWidth, int screenHeight, floa
     glBindProgramPipeline(progPipeline[mode]);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_FRAMEBUFFER_SRGB);
-    glEnable(GL_CULL_FACE);
 
     // glBindTextureUnit lookalike for GL 4.3
     auto bindBufferTextureUnit = [](GLuint unit, GLuint textureBuffer)
@@ -933,7 +932,6 @@ void BuddhaDemo::renderScene(int meshID, int screenWidth, int screenHeight, floa
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
     }
 
-    glDisable(GL_CULL_FACE);
     glDisable(GL_FRAMEBUFFER_SRGB);
     glDisable(GL_DEPTH_TEST);
     glBindProgramPipeline(0);

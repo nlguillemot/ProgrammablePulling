@@ -18,6 +18,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/gtx/transform.hpp>
+
 #include "wavefront.h"
 #include "buddha.h"
 
@@ -123,12 +125,19 @@ int main()
 
     std::vector<int> meshIDs;
     std::vector<std::string> meshDisplayNames;
+    std::vector<glm::mat4> meshMatrices;
 
     meshDisplayNames.push_back("buddha");
     meshIDs.push_back(pDemo->addMesh("models/buddha.obj"));
+    meshMatrices.push_back(glm::mat4());
 
     meshDisplayNames.push_back("cache optimized buddha");
     meshIDs.push_back(pDemo->addMesh("models/buddha-optimized.obj"));
+    meshMatrices.push_back(glm::mat4());
+
+    meshDisplayNames.push_back("sponza");
+    meshIDs.push_back(pDemo->addMesh("models/sponza.obj"));
+    meshMatrices.push_back(glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)) * glm::scale(glm::vec3(1.0f / 100.0f)));
 
     std::vector<const char*> meshDisplayNamesCStrs;
     for (const std::string& name : meshDisplayNames)
@@ -219,6 +228,7 @@ int main()
         uint64_t elapsedNanoseconds;
         pDemo->renderScene(
             meshIDs[currMeshIndex],
+            meshMatrices[currMeshIndex],
             screenWidth, screenHeight,
             animate ? (float)dtsec : 0.0f, 
             (buddha::VertexPullingMode)g_VertexPullingMode, 

@@ -137,7 +137,7 @@ int main()
 
     meshDisplayNames.push_back("sponza");
     meshIDs.push_back(pDemo->addMesh("models/sponza.obj"));
-    meshMatrices.push_back(glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)) * glm::scale(glm::vec3(1.0f / 100.0f)));
+    meshMatrices.push_back(glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)) * glm::scale(glm::vec3(1.0f / 100.0f)) * glm::rotate(glm::radians(90.0f), glm::vec3(0.0f,1.0f,0.0f)));
 
     std::vector<const char*> meshDisplayNamesCStrs;
     for (const std::string& name : meshDisplayNames)
@@ -148,31 +148,32 @@ int main()
     int currMeshIndex = 0;
 
     const char* modeStringFormats[buddha::NUMBER_OF_MODES]  = {};
-    const char* modeStringHeader                             = "Flexibility        | Layout | Detail                  | GL object | Average time      ";
-    modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE        ] = "Fixed-function     |   AoS  | One XYZ attrib          | VAO       | %8llu microseconds";
-    modeStringFormats[buddha::FIXED_FUNCTION_AOS_XYZW_MODE   ] = "Fixed-function     |   AoS  | XYZ attrib w/ align(16) | VAO       | %8llu microseconds";
-    modeStringFormats[buddha::FIXED_FUNCTION_SOA_MODE        ] = "Fixed-function     |   SoA  | Separate X/Y/Z attribs  | VAO       | %8llu microseconds";
-    modeStringFormats[buddha::FIXED_FUNCTION_INTERLEAVED_MODE] = "Fixed-function     |   AoS  | Interleaved Pos/Normal  | VAO       | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_AOS_1RGBAFETCH_MODE    ] = "Programmable       |   AoS  | One RGBA32F texelFetch  | texture   | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_AOS_1RGBFETCH_MODE     ] = "Programmable       |   AoS  | One RGB32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_AOS_3FETCH_MODE        ] = "Programmable       |   AoS  | Three R32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_SOA_MODE               ] = "Programmable       |   SoA  | Three R32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_IMAGE_AOS_1FETCH_MODE  ] = "Programmable       |   AoS  | One RGBA32F imageLoad   | image     | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_IMAGE_AOS_3FETCH_MODE  ] = "Programmable       |   AoS  | Three R32F imageLoad    | image     | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_IMAGE_SOA_MODE         ] = "Programmable       |   SoA  | Three R32F imageLoad    | image     | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_SSBO_AOS_1FETCH_MODE   ] = "Programmable       |   AoS  | One RGBA32F SSBO load   | SSBO      | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_SSBO_AOS_3FETCH_MODE   ] = "Programmable       |   AoS  | Three R32F SSBO loads   | SSBO      | %8llu microseconds";
-    modeStringFormats[buddha::FETCHER_SSBO_SOA_MODE          ] = "Programmable       |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_AOS_1RGBAFETCH_MODE     ] = "Fully programmable |   AoS  | One RGBA32F texelFetch  | texture   | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_AOS_1RGBFETCH_MODE      ] = "Fully programmable |   AoS  | One RGB32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_AOS_3FETCH_MODE         ] = "Fully programmable |   AoS  | Three R32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_SOA_MODE                ] = "Fully programmable |   SoA  | Three R32F texelFetch   | texture   | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_IMAGE_AOS_1FETCH_MODE   ] = "Fully programmable |   AoS  | One RGBA32F imageLoad   | image     | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_IMAGE_AOS_3FETCH_MODE   ] = "Fully programmable |   AoS  | Three R32F imageLoad    | image     | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_IMAGE_SOA_MODE          ] = "Fully programmable |   SoA  | Three R32F imageLoad    | image     | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_SSBO_AOS_1FETCH_MODE    ] = "Fully programmable |   AoS  | One RGBA32F SSBO load   | SSBO      | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_SSBO_AOS_3FETCH_MODE    ] = "Fully programmable |   AoS  | Three R32F SSBO loads   | SSBO      | %8llu microseconds";
-    modeStringFormats[buddha::PULLER_SSBO_SOA_MODE           ] = "Fully programmable |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds";
+    const char* modeStringHeader                             =   "Flexibility        | Layout | Detail                  | GL object | Average time       | Vertex shader";
+    modeStringFormats[buddha::FIXED_FUNCTION_AOS_MODE        ] = "Fixed-function     |   AoS  | One XYZ attrib          | VAO       | %8llu microseconds | %s";
+    modeStringFormats[buddha::FIXED_FUNCTION_AOS_XYZW_MODE   ] = "Fixed-function     |   AoS  | XYZ attrib w/ align(16) | VAO       | %8llu microseconds | %s";
+    modeStringFormats[buddha::FIXED_FUNCTION_SOA_MODE        ] = "Fixed-function     |   SoA  | Separate X/Y/Z attribs  | VAO       | %8llu microseconds | %s";
+    modeStringFormats[buddha::FIXED_FUNCTION_INTERLEAVED_MODE] = "Fixed-function     |   AoS  | Interleaved Pos/Normal  | VAO       | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_AOS_1RGBAFETCH_MODE    ] = "Programmable       |   AoS  | One RGBA32F texelFetch  | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_AOS_1RGBFETCH_MODE     ] = "Programmable       |   AoS  | One RGB32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_AOS_3FETCH_MODE        ] = "Programmable       |   AoS  | Three R32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_SOA_MODE               ] = "Programmable       |   SoA  | Three R32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_IMAGE_AOS_1FETCH_MODE  ] = "Programmable       |   AoS  | One RGBA32F imageLoad   | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_IMAGE_AOS_3FETCH_MODE  ] = "Programmable       |   AoS  | Three R32F imageLoad    | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_IMAGE_SOA_MODE         ] = "Programmable       |   SoA  | Three R32F imageLoad    | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_SSBO_AOS_1FETCH_MODE   ] = "Programmable       |   AoS  | One RGBA32F SSBO load   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_SSBO_AOS_3FETCH_MODE   ] = "Programmable       |   AoS  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::FETCHER_SSBO_SOA_MODE          ] = "Programmable       |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_AOS_1RGBAFETCH_MODE     ] = "Fully programmable |   AoS  | One RGBA32F texelFetch  | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_AOS_1RGBFETCH_MODE      ] = "Fully programmable |   AoS  | One RGB32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_AOS_3FETCH_MODE         ] = "Fully programmable |   AoS  | Three R32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_SOA_MODE                ] = "Fully programmable |   SoA  | Three R32F texelFetch   | texture   | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_IMAGE_AOS_1FETCH_MODE   ] = "Fully programmable |   AoS  | One RGBA32F imageLoad   | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_IMAGE_AOS_3FETCH_MODE   ] = "Fully programmable |   AoS  | Three R32F imageLoad    | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_IMAGE_SOA_MODE          ] = "Fully programmable |   SoA  | Three R32F imageLoad    | image     | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_SSBO_AOS_1FETCH_MODE    ] = "Fully programmable |   AoS  | One RGBA32F SSBO load   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_SSBO_AOS_3FETCH_MODE    ] = "Fully programmable |   AoS  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_SSBO_SOA_MODE           ] = "Fully programmable |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_OBJ_MODE                ] = "Fully programmable |   AoS  | OBJ-style multi-index   | SSBO      | %8llu microseconds | %s";
 
     for (const char* mode : modeStringFormats)
     {
@@ -180,7 +181,7 @@ int main()
     }
 
     double then = glfwGetTime();
-    bool animate = true;
+    bool animate = false;
 
     std::vector<std::vector<uint64_t>> meshTotalTimes;
     std::vector<std::vector<int>> meshNumTimes;
@@ -240,7 +241,7 @@ int main()
         numTimes[g_VertexPullingMode] += 1;
         totalTimes[g_VertexPullingMode] += elapsedNanoseconds;
 
-        ImGui::SetNextWindowSize(ImVec2(700.0f, 650.0f), ImGuiSetCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(900.0f, 700.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
         {
             ImGui::Text("Vendor: %s", vendor);
@@ -252,7 +253,15 @@ int main()
             {
                 uint64_t lastTime;
                 lastTime = numTimes[i] == 0 ? 0 : totalTimes[i] / numTimes[i];
-                sprintf(modeStrings[i], modeStringFormats[i], lastTime / 1000);
+                
+                std::string modeName = pDemo->GetModeName(i);
+                static const std::string shaderPath = "shaders/";
+                if (modeName.size() >= shaderPath.size() && modeName.substr(0, shaderPath.size()) == shaderPath)
+                {
+                    modeName = modeName.substr(shaderPath.size());
+                }
+
+                sprintf(modeStrings[i], modeStringFormats[i], lastTime / 1000, modeName.c_str());
                 modeStringPtrs[i] = modeStrings[i];
             }
 

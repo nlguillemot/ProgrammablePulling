@@ -52,8 +52,12 @@ protected:
     Transform transform;                    // transformation data
     GLuint transformUB;                     // uniform buffer for the transformation
 
+    struct VertexProg {
+        GLuint prog;
+        std::string name;
+    };
     GLuint fragmentProg;                    // common fragment shader program
-    GLuint vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
+    VertexProg vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
     GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
 
     struct PerModel
@@ -64,8 +68,8 @@ protected:
         // separate index/vertex buffers
         GLuint positionIndexBuffer;
         GLuint normalIndexBuffer;
-        GLuint uniquePositionBuffer;
-        GLuint uniqueNormalBuffer;
+        GLuint uniquePositionBufferXYZW;
+        GLuint uniqueNormalBufferXYZW;
 
         // vertex buffers for various settings
         GLuint interleavedBuffer;
@@ -117,8 +121,13 @@ protected:
 
     void loadShaders();
 
-    GLuint loadShaderProgramFromFile(const char* filename, GLenum shaderType);
+    VertexProg loadShaderProgramFromFile(const char* filename, GLenum shaderType);
     GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
+    
+    GLuint createProgramPipeline(const VertexProg& vertexShader, GLuint geometryShader, GLuint fragmentShader)
+    {
+        return createProgramPipeline(vertexShader.prog, geometryShader, fragmentShader);
+    }
 
 public:
     BuddhaDemo();
@@ -126,6 +135,11 @@ public:
     int addMesh(const char* path) override;
 
     void renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) override;
+
+    std::string GetModeName(int mode) override
+    {
+        return vertexProg[mode].name;
+    }
 };
 
 std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
@@ -166,19 +180,37 @@ void BuddhaDemo::PerModel::load(const char* path)
 
     // unique position buffer
     {
-        GLsizei bufferSize = (GLsizei)(buddhaObj.UniquePositions.size() * sizeof(glm::vec3));
-        glGenBuffers(1, &uniquePositionBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, uniquePositionBuffer);
-        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.UniquePositions.data(), 0);
+        std::unique_ptr<glm::vec4[]> positions(new glm::vec4[buddhaObj.UniquePositions.size()]);
+        for (size_t i = 0; i < buddhaObj.UniquePositions.size(); i++)
+        {
+            positions[i][0] = buddhaObj.UniquePositions[i][0];
+            positions[i][1] = buddhaObj.UniquePositions[i][1];
+            positions[i][2] = buddhaObj.UniquePositions[i][2];
+            positions[i][3] = 1.0f;
+        }
+
+        GLsizei bufferSize = (GLsizei)(buddhaObj.UniquePositions.size() * sizeof(glm::vec4));
+        glGenBuffers(1, &uniquePositionBufferXYZW);
+        glBindBuffer(GL_ARRAY_BUFFER, uniquePositionBufferXYZW);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, positions.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     // unique normal buffer
     {
-        GLsizei bufferSize = (GLsizei)(buddhaObj.UniqueNormals.size() * sizeof(glm::vec3));
-        glGenBuffers(1, &uniqueNormalBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, uniqueNormalBuffer);
-        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.UniqueNormals.data(), 0);
+        std::unique_ptr<glm::vec4[]> normals(new glm::vec4[buddhaObj.UniqueNormals.size()]);
+        for (size_t i = 0; i < buddhaObj.UniqueNormals.size(); i++)
+        {
+            normals[i][0] = buddhaObj.UniqueNormals[i][0];
+            normals[i][1] = buddhaObj.UniqueNormals[i][1];
+            normals[i][2] = buddhaObj.UniqueNormals[i][2];
+            normals[i][3] = 0.0f;
+        }
+
+        GLsizei bufferSize = (GLsizei)(buddhaObj.UniqueNormals.size() * sizeof(glm::vec4));
+        glGenBuffers(1, &uniqueNormalBufferXYZW);
+        glBindBuffer(GL_ARRAY_BUFFER, uniqueNormalBufferXYZW);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, normals.get(), 0);
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -473,6 +505,12 @@ void BuddhaDemo::PerModel::load(const char* path)
     drawCmd[PULLER_SSBO_SOA_MODE].firstVertex = 0;
     drawCmd[PULLER_SSBO_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
 
+    drawCmd[PULLER_OBJ_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_OBJ_MODE].useIndices = false;
+    drawCmd[PULLER_OBJ_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_OBJ_MODE].firstVertex = 0;
+    drawCmd[PULLER_OBJ_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
+
     // create auxiliary texture buffers
     glGenTextures(1, &indexTexBufferR32I);
     glBindTexture(GL_TEXTURE_BUFFER, indexTexBufferR32I);
@@ -573,12 +611,12 @@ int BuddhaDemo::addMesh(const char* path)
     return (int)models.size() - 1;
 }
 
-GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shaderType)
+BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shaderType)
 {
     std::ifstream file(filename);
     if (!file) {
         std::cerr << "Unable to open file: " << filename << std::endl;
-        return 0;
+        return {};
     }
 
     // weird C++ magic to read the file in one go
@@ -588,7 +626,7 @@ GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shader
 
     if (file.bad()) {
         std::cerr << "Error reading the file: " << filename << std::endl;
-        return 0;
+        return {};
     }
 
     const GLchar* sources[] = {
@@ -607,7 +645,7 @@ GLuint BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shader
         exit(1);
     }
 
-    return program;
+    return { program, filename };
 
 }
 
@@ -633,7 +671,6 @@ GLuint BuddhaDemo::createProgramPipeline(GLuint vertexShader, GLuint geometrySha
     }
 
     return pipeline;
-
 }
 
 void BuddhaDemo::loadShaders() {
@@ -641,7 +678,7 @@ void BuddhaDemo::loadShaders() {
     std::cout << "> Loading shaders..." << std::endl;
 
     // load common fragment shader
-    fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER);
+    fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER).prog;
 
     vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, fragmentProg);
@@ -714,6 +751,9 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[PULLER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_soa.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
+
+    vertexProg[PULLER_OBJ_MODE] = loadShaderProgramFromFile("shaders/puller_obj.vert", GL_VERTEX_SHADER);
+    progPipeline[PULLER_OBJ_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_MODE], 0, fragmentProg);
 }
 
 void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -889,6 +929,13 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, model.normalXBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, model.normalYBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, model.normalZBuffer);
+    }
+    else if (mode == PULLER_OBJ_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.positionIndexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.normalIndexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.uniquePositionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.uniqueNormalBufferXYZW);
     }
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);

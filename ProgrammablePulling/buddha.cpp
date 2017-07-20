@@ -71,6 +71,9 @@ protected:
         GLuint uniquePositionBufferXYZW;
         GLuint uniqueNormalBufferXYZW;
 
+        GLuint assemblyIndexBuffer;
+        GLuint assemblyVertexArray;
+
         // vertex buffers for various settings
         GLuint interleavedBuffer;
         GLuint positionBuffer;
@@ -212,6 +215,22 @@ void BuddhaDemo::PerModel::load(const char* path)
         glBindBuffer(GL_ARRAY_BUFFER, uniqueNormalBufferXYZW);
         glBufferStorage(GL_ARRAY_BUFFER, bufferSize, normals.get(), 0);
         glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // "assembly" index buffer
+    {
+        std::unique_ptr<GLuint[]> assemblyIndices(new GLuint[buddhaObj.PositionIndices.size() + buddhaObj.NormalIndices.size()]);
+        for (size_t i = 0; i < buddhaObj.PositionIndices.size(); i++)
+        {
+            assemblyIndices[i * 2 + 0] = buddhaObj.PositionIndices[i];
+            assemblyIndices[i * 2 + 1] = buddhaObj.NormalIndices[i] | 0x80000000;
+        }
+
+        GLsizei bufferSize = (GLsizei)((buddhaObj.PositionIndices.size() + buddhaObj.NormalIndices.size()) * sizeof(GLuint));
+        glGenBuffers(1, &assemblyIndexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, assemblyIndexBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, assemblyIndices.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
@@ -401,6 +420,11 @@ void BuddhaDemo::PerModel::load(const char* path)
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
     glBindVertexArray(0);
 
+    glGenVertexArrays(1, &assemblyVertexArray);
+    glBindVertexArray(assemblyVertexArray);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assemblyIndexBuffer);
+    glBindVertexArray(0);
+
     drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
     drawCmd[FIXED_FUNCTION_AOS_MODE].useIndices = true;
     drawCmd[FIXED_FUNCTION_AOS_MODE].prim_type = GL_TRIANGLES;
@@ -510,6 +534,12 @@ void BuddhaDemo::PerModel::load(const char* path)
     drawCmd[PULLER_OBJ_MODE].prim_type = GL_TRIANGLES;
     drawCmd[PULLER_OBJ_MODE].firstVertex = 0;
     drawCmd[PULLER_OBJ_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
+
+    drawCmd[ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
+    drawCmd[ASSEMBLER_MODE].useIndices = true;
+    drawCmd[ASSEMBLER_MODE].prim_type = GL_TRIANGLES_ADJACENCY; // hack to get patches of 6 vertices
+    drawCmd[ASSEMBLER_MODE].firstVertex = 0;
+    drawCmd[ASSEMBLER_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size() * 2;
 
     // create auxiliary texture buffers
     glGenTextures(1, &indexTexBufferR32I);
@@ -754,6 +784,10 @@ void BuddhaDemo::loadShaders() {
 
     vertexProg[PULLER_OBJ_MODE] = loadShaderProgramFromFile("shaders/puller_obj.vert", GL_VERTEX_SHADER);
     progPipeline[PULLER_OBJ_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_MODE], 0, fragmentProg);
+
+    vertexProg[ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", GL_VERTEX_SHADER);
+    GLuint assemblyGeom = loadShaderProgramFromFile("shaders/assembler.geom", GL_GEOMETRY_SHADER).prog;
+    progPipeline[ASSEMBLER_MODE] = createProgramPipeline(vertexProg[ASSEMBLER_MODE], assemblyGeom, fragmentProg);
 }
 
 void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -936,6 +970,11 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.normalIndexBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.uniquePositionBufferXYZW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.uniqueNormalBufferXYZW);
+    }
+    else if (mode == ASSEMBLER_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.uniquePositionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.uniqueNormalBufferXYZW);
     }
 
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);

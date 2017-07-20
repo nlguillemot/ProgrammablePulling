@@ -49,6 +49,8 @@ enum VertexPullingMode
     PULLER_SSBO_SOA_MODE,
     PULLER_OBJ_MODE,
     //
+    ASSEMBLER_MODE,
+    //
     NUMBER_OF_MODES
 };
 

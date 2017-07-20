@@ -117,5 +117,11 @@
     <None Include="shaders\puller_obj.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\assembler.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\assembler.geom">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

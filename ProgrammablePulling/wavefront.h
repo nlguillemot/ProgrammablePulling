@@ -22,12 +22,16 @@ namespace demo {
 class WaveFrontObj 
 {
 public:
-	WaveFrontObj(const char* filename);
-	void dump();
+	explicit WaveFrontObj(const char* filename);
 
     std::vector<glm::vec3> Positions;
     std::vector<glm::vec3> Normals;
     std::vector<glm::uint> Indices;
+
+    std::vector<glm::vec3> UniquePositions;
+    std::vector<glm::vec3> UniqueNormals;
+    std::vector<glm::uint> PositionIndices;
+    std::vector<glm::uint> NormalIndices;
 };
 
 } /* namespace demo */

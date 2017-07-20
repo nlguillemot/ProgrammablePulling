@@ -46,13 +46,16 @@ WaveFrontObj::WaveFrontObj(const char* filename)
     std::vector<glm::vec3> unmerged_normals;
     std::set<IndexGroup> indexCache;
 
-    struct vec3compare {
-        constexpr bool operator()(const glm::vec3& a, const glm::vec3& b) const {
-            return std::make_tuple(a.x, a.y, a.z) < std::make_tuple(b.x, b.y, b.z);
+    struct uniquevec3 {
+        glm::vec3 v;
+        uint32_t i;
+
+        bool operator<(const uniquevec3& o) const {
+            return std::make_tuple(v.x, v.y, v.z) < std::make_tuple(o.v.x, o.v.y, o.v.z);
         }
     };
-    std::set<glm::vec3, vec3compare> unique_positions;
-    std::set<glm::vec3, vec3compare> unique_normals;
+    std::set<uniquevec3> unique_positions;
+    std::set<uniquevec3> unique_normals;
 
     GLuint id = 0;
 
@@ -72,13 +75,23 @@ WaveFrontObj::WaveFrontObj(const char* filename)
             glm::vec3 v;
             sscanf(line.c_str(), "v %f %f %f", &v.x, &v.y, &v.z);
     		unmerged_positions.push_back(v);
-            unique_positions.insert(v);
+
+            uniquevec3 u = { v, (uint32_t)UniquePositions.size() };
+            if (unique_positions.insert(u).second)
+            {
+                UniquePositions.push_back(v);
+            }
     	} 
         else if (line.size() >= 2 && line[0] == 'v' && line[1] == 'n') {
             glm::vec3 vn;
             sscanf(line.c_str(), "vn %f %f %f", &vn.x, &vn.y, &vn.z);
     		unmerged_normals.push_back(vn);
-            unique_normals.insert(vn);
+
+            uniquevec3 u = { vn, (uint32_t)UniqueNormals.size() };
+            if (unique_normals.insert(u).second)
+            {
+                UniqueNormals.push_back(vn);
+            }
     	} 
         else if (line.size() >= 1 && line[0] == 'f') {
             int ivs[4] = { 0, 0, 0, 0 };
@@ -121,28 +134,15 @@ WaveFrontObj::WaveFrontObj(const char* filename)
     			} else {
     				Indices.push_back(it->i);
     			}
+
+                PositionIndices.push_back(unique_positions.find(uniquevec3{unmerged_positions[ig.v - 1], 0})->i);
+                NormalIndices.push_back(unique_normals.find(uniquevec3{unmerged_normals[ig.n - 1], 0})->i);
     		}
     	}
     }
 
     printf("unique positions: %zu\n", unique_positions.size());
     printf("unique normals: %zu\n", unique_normals.size());
-}
-
-void WaveFrontObj::dump() {
-    for (const glm::vec3& v : Positions) {
-		std::cout << "v " << v.x << " " << v.y << " " << v.z << std::endl;
-	}
-
-    for (const glm::vec3& n : Normals) {
-		std::cout << "vn " << n.x << " " << n.y << " " << n.z << std::endl;
-	}
-
-    for (size_t ii = 0; ii < Indices.size(); ii += 3) {
-		std::cout << "f " << Indices[ii * 3 + 0];
-        std::cout << " "  << Indices[ii * 3 + 1];
-		std::cout << " "  << Indices[ii * 3 + 2] << std::endl;
-	}
 }
 
 } /* namespace demo */

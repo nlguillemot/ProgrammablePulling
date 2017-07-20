@@ -58,7 +58,15 @@ protected:
 
     struct PerModel
     {
-        GLuint indexBuffer;                     // index buffer for the mesh
+        // index buffer for the mesh
+        GLuint indexBuffer;
+
+        // separate index/vertex buffers
+        GLuint positionIndexBuffer;
+        GLuint normalIndexBuffer;
+        GLuint uniquePositionBuffer;
+        GLuint uniqueNormalBuffer;
+
         // vertex buffers for various settings
         GLuint interleavedBuffer;
         GLuint positionBuffer;
@@ -131,18 +139,46 @@ void BuddhaDemo::PerModel::load(const char* path)
 
     // Index buffer
     {
-        GLsizei indexBufferSize = (GLsizei)(buddhaObj.Indices.size() * sizeof(GLuint));
+        GLsizei bufferSize = (GLsizei)(buddhaObj.Indices.size() * sizeof(GLuint));
         glGenBuffers(1, &indexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, indexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.Indices.data(), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
-        // map index buffer and fill with data
-        GLuint *index = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, indexBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+    // position index buffer
+    {
+        GLsizei bufferSize = (GLsizei)(buddhaObj.PositionIndices.size() * sizeof(GLuint));
+        glGenBuffers(1, &positionIndexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, positionIndexBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.PositionIndices.data(), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
-        for (size_t i = 0; i < buddhaObj.Indices.size(); i++)
-            index[i] = buddhaObj.Indices[i];
+    // normal index buffer
+    {
+        GLsizei bufferSize = (GLsizei)(buddhaObj.NormalIndices.size() * sizeof(GLuint));
+        glGenBuffers(1, &normalIndexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, normalIndexBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.NormalIndices.data(), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 
+    // unique position buffer
+    {
+        GLsizei bufferSize = (GLsizei)(buddhaObj.UniquePositions.size() * sizeof(glm::vec3));
+        glGenBuffers(1, &uniquePositionBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, uniquePositionBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.UniquePositions.data(), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // unique normal buffer
+    {
+        GLsizei bufferSize = (GLsizei)(buddhaObj.UniqueNormals.size() * sizeof(glm::vec3));
+        glGenBuffers(1, &uniqueNormalBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, uniqueNormalBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.UniqueNormals.data(), 0);
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -156,17 +192,7 @@ void BuddhaDemo::PerModel::load(const char* path)
 
     // AoS interleaved buffer
     {
-        GLsizei interleavedBufferSize = (GLsizei)(
-            buddhaObj.Positions.size() * sizeof(glm::vec3) +
-            buddhaObj.Normals.size() * sizeof(glm::vec3));
-        glGenBuffers(1, &interleavedBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, interleavedBuffer);
-        glBufferData(GL_ARRAY_BUFFER, interleavedBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        Interleaved* interleaved = (Interleaved*)glMapBufferRange(GL_ARRAY_BUFFER, 0, interleavedBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
+        std::unique_ptr<Interleaved[]> interleaved(new Interleaved[buddhaObj.Positions.size()]);
         for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
         {
             interleaved[i].Position[0] = buddhaObj.Positions[i][0];
@@ -177,43 +203,28 @@ void BuddhaDemo::PerModel::load(const char* path)
             interleaved[i].Normal[2] = buddhaObj.Normals[i][2];
         }
 
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        GLsizei bufferSize = (GLsizei)(
+            buddhaObj.Positions.size() * sizeof(glm::vec3) +
+            buddhaObj.Normals.size() * sizeof(glm::vec3));
+
+        glGenBuffers(1, &interleavedBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, interleavedBuffer);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, interleaved.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
 	// AoS position buffer
     {
-        GLsizei positionBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec3));
+        GLsizei bufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec3));
         glGenBuffers(1, &positionBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-        glBufferData(GL_ARRAY_BUFFER, positionBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        glm::vec3* positions = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, positionBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-        for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
-        {
-            positions[i][0] = buddhaObj.Positions[i][0];
-            positions[i][1] = buddhaObj.Positions[i][1];
-            positions[i][2] = buddhaObj.Positions[i][2];
-        }
-
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.Positions.data(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     // AoS position buffer XYZW
     {
-        GLsizei positionBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec4));
-        glGenBuffers(1, &positionBufferXYZW);
-        glBindBuffer(GL_ARRAY_BUFFER, positionBufferXYZW);
-        glBufferData(GL_ARRAY_BUFFER, positionBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        glm::vec4* positions = (glm::vec4*)glMapBufferRange(GL_ARRAY_BUFFER, 0, positionBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
+        std::unique_ptr<glm::vec4[]> positions(new glm::vec4[buddhaObj.Positions.size()]);
         for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
         {
             positions[i][0] = buddhaObj.Positions[i][0];
@@ -222,43 +233,25 @@ void BuddhaDemo::PerModel::load(const char* path)
             positions[i][3] = 1.0f;
         }
 
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        GLsizei bufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(glm::vec4));
+        glGenBuffers(1, &positionBufferXYZW);
+        glBindBuffer(GL_ARRAY_BUFFER, positionBufferXYZW);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, positions.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     // AoS normal buffer
     {
-        GLsizei normalBufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec3));
+        GLsizei bufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec3));
         glGenBuffers(1, &normalBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-        glBufferData(GL_ARRAY_BUFFER, normalBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        glm::vec3* normals = (glm::vec3*)glMapBufferRange(GL_ARRAY_BUFFER, 0, normalBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-        for (size_t i = 0; i < buddhaObj.Normals.size(); i++)
-        {
-            normals[i][0] = buddhaObj.Normals[i][0];
-            normals[i][1] = buddhaObj.Normals[i][1];
-            normals[i][2] = buddhaObj.Normals[i][2];
-        }
-
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.Normals.data(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
     // AoS normal buffer XYZW
     {
-        GLsizei normalBufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec4));
-        glGenBuffers(1, &normalBufferXYZW);
-        glBindBuffer(GL_ARRAY_BUFFER, normalBufferXYZW);
-        glBufferData(GL_ARRAY_BUFFER, normalBufferSize, NULL, GL_STATIC_DRAW);
-
-        // map vertex buffer and fill with data
-        glm::vec4* normals = (glm::vec4*)glMapBufferRange(GL_ARRAY_BUFFER, 0, normalBufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
+        std::unique_ptr<glm::vec4[]> normals(new glm::vec4[buddhaObj.Normals.size()]);
         for (size_t i = 0; i < buddhaObj.Normals.size(); i++)
         {
             normals[i][0] = buddhaObj.Normals[i][0];
@@ -267,7 +260,10 @@ void BuddhaDemo::PerModel::load(const char* path)
             normals[i][3] = 0.0f;
         }
 
-        glUnmapBuffer(GL_ARRAY_BUFFER);
+        GLsizei bufferSize = (GLsizei)(buddhaObj.Normals.size() * sizeof(glm::vec4));
+        glGenBuffers(1, &normalBufferXYZW);
+        glBindBuffer(GL_ARRAY_BUFFER, normalBufferXYZW);
+        glBufferStorage(GL_ARRAY_BUFFER, bufferSize, normals.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
@@ -285,29 +281,23 @@ void BuddhaDemo::PerModel::load(const char* path)
 
         if (soaIdx >= 0 && soaIdx <= 5)
         {
-            // float attribs
-
-            GLsizei vertexBufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(float));
-            glGenBuffers(1, pVertexBuffer);
-            glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
-            glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
-
-            // map vertex buffer and fill with data
-            float* buf = (float*)glMapBufferRange(GL_ARRAY_BUFFER, 0, vertexBufferSize,
-                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
-
-            for (size_t i = 0; i < buddhaObj.Positions.size(); i++) {
+            std::unique_ptr<float[]> buf(new float[buddhaObj.Positions.size()]);
+            for (size_t i = 0; i < buddhaObj.Positions.size(); i++)
+            {
                 buf[i] =
-                    soaIdx == 0 ? buddhaObj.Positions[i].x                :
-                    soaIdx == 1 ? buddhaObj.Positions[i].y                :
-                    soaIdx == 2 ? buddhaObj.Positions[i].z                :
-                    soaIdx == 3 ? buddhaObj.Normals[i].x                  :
-                    soaIdx == 4 ? buddhaObj.Normals[i].y                  :
-                    soaIdx == 5 ? buddhaObj.Normals[i].z                  :
+                    soaIdx == 0 ? buddhaObj.Positions[i].x :
+                    soaIdx == 1 ? buddhaObj.Positions[i].y :
+                    soaIdx == 2 ? buddhaObj.Positions[i].z :
+                    soaIdx == 3 ? buddhaObj.Normals[i].x :
+                    soaIdx == 4 ? buddhaObj.Normals[i].y :
+                    soaIdx == 5 ? buddhaObj.Normals[i].z :
                     0.0f;
             }
 
-            glUnmapBuffer(GL_ARRAY_BUFFER);
+            GLsizei bufferSize = (GLsizei)(buddhaObj.Positions.size() * sizeof(float));
+            glGenBuffers(1, pVertexBuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, *pVertexBuffer);
+            glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buf.get(), 0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
     }
@@ -565,7 +555,7 @@ BuddhaDemo::BuddhaDemo() {
 	// create uniform buffer
 	glGenBuffers(1, &transformUB);
 	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_STATIC_DRAW);
+	glBufferStorage(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_DYNAMIC_STORAGE_BIT);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glGenQueries(1, &timeElapsedQuery);
@@ -742,7 +732,7 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)screenWidth / screenHeight, 0.1f, 40.f);
 	transform.MVPMatrix = transform.ProjectionMatrix * transform.ModelViewMatrix;
 	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-	glBufferData(GL_UNIFORM_BUFFER, sizeof(transform), &transform, GL_STATIC_DRAW);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(transform), &transform);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

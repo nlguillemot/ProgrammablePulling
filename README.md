@@ -36,6 +36,12 @@ Uses fully programmable pulling to read mesh data layed out in the same format a
 
 Implements a post-transform vertex cache in software, based on the code in "Deferred Attribute Interpolation Shading" (Listing 3.1) in GPU Pro 7 (authors: Christoph Schied and Carsten Dachsbacher.)
 
+This mode can be configured using the GUI with the following options:
+
+* **Soft vertex cache bucket bits**: Decides the size of the hash table used for the cache. (= `2^n` buckets)
+* **Soft vertex cache lock attempts**: Number of times the vertex shader should try to acquire the cache bucket's lock before giving up and recomputing the vertex.
+* **Soft vertex cache lock push-through attempts**: Number of times the vertex shader should poll the lock's status when it sees it locked, attempting to spin on it until it looks unlocked before trying to secure it again.
+
 ### Assembly in GS
 
 Runs 6 vertex shader instances per triangle, and each instance outputs either a position or a normal. The 3 positions and 3 normals are assembled together into a primitve in a geometry shader.

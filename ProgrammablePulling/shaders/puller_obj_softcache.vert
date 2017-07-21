@@ -138,8 +138,8 @@ void main()
     {
         VertexCache[address].PositionIndex = positionIndex;
         VertexCache[address].NormalIndex = normalIndex;
-        VertexCache[address].m_outVertexPosition.xyz = outVertexPosition;
-        VertexCache[address].m_outVertexNormal.xyz = outVertexNormal;
+        VertexCache[address].m_outVertexPosition = vec4(outVertexPosition, 1);
+        VertexCache[address].m_outVertexNormal = vec4(outVertexNormal, 0);
         VertexCache[address].m_gl_Position = gl_Position;
     }
 }

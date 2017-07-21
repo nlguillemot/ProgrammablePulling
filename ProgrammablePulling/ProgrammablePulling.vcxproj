@@ -107,7 +107,7 @@
     <ClInclude Include="wavefront.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\assembler.geom" />
+    <None Include="shaders\gs_assembler.geom" />
     <None Include="shaders\assembler.vert" />
     <None Include="shaders\common.frag" />
     <None Include="shaders\fetcher_aos_1fetch.vert" />
@@ -132,6 +132,8 @@
     <None Include="shaders\puller_ssbo_aos_1fetch.vert" />
     <None Include="shaders\puller_ssbo_aos_3fetch.vert" />
     <None Include="shaders\puller_ssbo_soa.vert" />
+    <None Include="shaders\ts_assembler.tesc" />
+    <None Include="shaders\ts_assembler.tese" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

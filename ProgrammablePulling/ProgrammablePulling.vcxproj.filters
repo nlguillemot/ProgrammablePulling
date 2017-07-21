@@ -117,13 +117,19 @@
     <None Include="shaders\puller_obj.vert">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\puller_obj_softcache.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\gs_assembler.geom">
+      <Filter>shaders</Filter>
+    </None>
     <None Include="shaders\assembler.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\assembler.geom">
+    <None Include="shaders\ts_assembler.tese">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\puller_obj_softcache.vert">
+    <None Include="shaders\ts_assembler.tesc">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

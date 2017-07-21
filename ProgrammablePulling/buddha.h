@@ -52,9 +52,14 @@ enum VertexPullingMode
     PULLER_OBJ_MODE,
     PULLER_OBJ_SOFTCACHE_MODE,
     //
-    ASSEMBLER_MODE,
+    GS_ASSEMBLER_MODE,
     //
-    NUMBER_OF_MODES
+    NUMBER_OF_MODES,
+
+    // Disabled because it doesn't work
+    DISABLED_MODES_START = NUMBER_OF_MODES - 1,
+    TS_ASSEMBLER_MODE,
+    NUMBER_OF_MODES_INCLUDING_DISABLED_ONES
 };
 
 struct SoftVertexCacheConfig

@@ -173,7 +173,8 @@ int main()
     modeStringFormats[buddha::PULLER_SSBO_SOA_MODE           ] = "Pull index & vertex |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
     modeStringFormats[buddha::PULLER_OBJ_MODE                ] = "Pull index & vertex |   AoS  | OBJ-style multi-index   | SSBO      | %8llu microseconds | %s";
     modeStringFormats[buddha::PULLER_OBJ_SOFTCACHE_MODE      ] = "Pull w/ soft cache  |   AoS  | OBJ-style + soft cache  | SSBO      | %8llu microseconds | %s";
-    modeStringFormats[buddha::ASSEMBLER_MODE                 ] = "Geometry assembly   |   AoS  | OBJ-style + IA in GS    | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::GS_ASSEMBLER_MODE              ] = "Assembly in GS      |   AoS  | OBJ-style + IA in GS    | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::TS_ASSEMBLER_MODE              ] = "Assembly in TS      |   AoS  | OBJ-style + IA in TS    | SSBO      | %8llu microseconds | %s";
 
     for (const char* mode : modeStringFormats)
     {

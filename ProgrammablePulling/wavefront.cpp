@@ -145,6 +145,7 @@ WaveFrontObj::WaveFrontObj(const char* filename)
     printf("unique normals: %zu\n", unique_normals.size());
     printf("merged vertices: %zu\n", Positions.size());
     printf("merged indices: %zu\n", Indices.size());
+    printf("unmerged index tuples: %zu\n", PositionIndices.size());
 }
 
 } /* namespace demo */

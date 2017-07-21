@@ -30,20 +30,41 @@ struct Camera {
 	glm::vec3 rotation;				// camera rotation
 };
 
-struct DrawCommand {
-    GLuint vertexArray;
-	bool useIndices;				// specifies whether this is an indexed draw command
-	GLenum prim_type;				// primitive type
-	union {
-		struct {
-			GLuint indexOffset;	// offset into the index buffer
-			GLuint indexCount;	// number of indices
-		};
-		struct {
-			GLuint firstVertex;	// first vertex index
-			GLuint vertexCount;	// number of vertices
-		};
-	};
+struct DrawArraysCmd {
+    GLuint count = 0;
+    GLuint instanceCount = 1;
+    GLuint first = 0;
+    GLuint baseInstance = 0;
+};
+
+struct DrawElementsCmd {
+    GLuint count = 0;
+    GLuint instanceCount = 1;
+    GLuint firstIndex = 0;
+    GLuint baseVertex = 0;
+    GLuint baseInstance = 0;
+};
+
+enum DrawCmdType
+{
+    DRAWCMD_UNKNOWN,
+    DRAWCMD_DRAWARRAYS,
+    DRAWCMD_DRAWELEMENTS
+};
+
+struct DrawCommand
+{
+    GLuint vertexArray = 0;
+    GLenum primType = GL_TRIANGLES;
+
+    GLint patchVertices = 0;
+    GLfloat patchDefaultOuterLevel[4]{ 1,1,1,1 };
+    GLfloat patchDefaultInnerLevel[2]{ 1,1 };
+
+    // specifies whether this is an indexed draw command
+    DrawCmdType drawType = DRAWCMD_UNKNOWN;
+    DrawElementsCmd drawElements;
+    DrawArraysCmd drawArrays;
 };
 
 class BuddhaDemo : public IBuddhaDemo
@@ -58,8 +79,8 @@ class BuddhaDemo : public IBuddhaDemo
         std::string name;
     };
     GLuint fragmentProg;                    // common fragment shader program
-    VertexProg vertexProg[NUMBER_OF_MODES];     // vertex shader programs for the three vertex pulling modes
-    GLuint progPipeline[NUMBER_OF_MODES];   // program pipelines for the three vertex pulling modes
+    VertexProg vertexProg[NUMBER_OF_MODES_INCLUDING_DISABLED_ONES];     // vertex shader programs for the three vertex pulling modes
+    GLuint progPipeline[NUMBER_OF_MODES_INCLUDING_DISABLED_ONES];   // program pipelines for the three vertex pulling modes
 
     struct PerModel
     {
@@ -116,7 +137,7 @@ class BuddhaDemo : public IBuddhaDemo
 
         GLuint vertexCacheBuffer;
 
-        DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
+        DrawCommand drawCmd[NUMBER_OF_MODES_INCLUDING_DISABLED_ONES];   // draw command for the three vertex pulling modes
 
         void load(const char* path);
     };
@@ -140,11 +161,11 @@ class BuddhaDemo : public IBuddhaDemo
     void loadShaders();
 
     VertexProg loadShaderProgramFromFile(const char* filename, const char* preamble, GLenum shaderType);
-    GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
+    GLuint createProgramPipeline(GLuint vertexShader, GLuint tessControlShader, GLuint tessEvaluationShader, GLuint geometryShader, GLuint fragmentShader);
     
-    GLuint createProgramPipeline(const VertexProg& vertexShader, GLuint geometryShader, GLuint fragmentShader)
+    GLuint createProgramPipeline(const VertexProg& vertexShader, GLuint tessControlShader, GLuint tessEvaluationShader, GLuint geometryShader, GLuint fragmentShader)
     {
-        return createProgramPipeline(vertexShader.prog, geometryShader, fragmentShader);
+        return createProgramPipeline(vertexShader.prog, tessControlShader, tessEvaluationShader, geometryShader, fragmentShader);
     }
 
 public:
@@ -220,7 +241,7 @@ void BuddhaDemo::PerModel::load(const char* path)
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
-    numUniqueVerts = int(buddhaObj.UniquePositions.size());
+    numUniqueVerts = int(buddhaObj.PositionIndices.size());
 
     // unique position buffer
     {
@@ -467,126 +488,95 @@ void BuddhaDemo::PerModel::load(const char* path)
     glBindVertexArray(0);
 
     drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
-    drawCmd[FIXED_FUNCTION_AOS_MODE].useIndices = true;
-    drawCmd[FIXED_FUNCTION_AOS_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FIXED_FUNCTION_AOS_MODE].indexOffset = 0;
-    drawCmd[FIXED_FUNCTION_AOS_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FIXED_FUNCTION_AOS_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FIXED_FUNCTION_AOS_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].vertexArray = vertexArrayAoSXYZW;
-    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].useIndices = true;
-    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].indexOffset = 0;
-    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FIXED_FUNCTION_SOA_MODE].vertexArray = vertexArraySoA;
-    drawCmd[FIXED_FUNCTION_SOA_MODE].useIndices = true;
-    drawCmd[FIXED_FUNCTION_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FIXED_FUNCTION_SOA_MODE].indexOffset = 0;
-    drawCmd[FIXED_FUNCTION_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FIXED_FUNCTION_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].vertexArray = vertexArrayInterleaved;
-    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].useIndices = true;
-    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].indexOffset = 0;
-    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].useIndices = true;
-    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].indexOffset = 0;
-    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_AOS_1RGBFETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
     drawCmd[FETCHER_AOS_3FETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
 
     drawCmd[FETCHER_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_SOA_MODE].useIndices = true;
-    drawCmd[FETCHER_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_SOA_MODE].indexOffset = 0;
-    drawCmd[FETCHER_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].useIndices = true;
-    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].indexOffset = 0;
-    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_IMAGE_AOS_3FETCH_MODE] = drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE];
 
     drawCmd[FETCHER_IMAGE_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_IMAGE_SOA_MODE].useIndices = true;
-    drawCmd[FETCHER_IMAGE_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_IMAGE_SOA_MODE].indexOffset = 0;
-    drawCmd[FETCHER_IMAGE_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_IMAGE_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].useIndices = true;
-    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].indexOffset = 0;
-    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_SSBO_AOS_3FETCH_MODE] = drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE];
 
     drawCmd[FETCHER_SSBO_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
-    drawCmd[FETCHER_SSBO_SOA_MODE].useIndices = true;
-    drawCmd[FETCHER_SSBO_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[FETCHER_SSBO_SOA_MODE].indexOffset = 0;
-    drawCmd[FETCHER_SSBO_SOA_MODE].indexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[FETCHER_SSBO_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[FETCHER_SSBO_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].useIndices = false;
-    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].firstVertex = 0;
-    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_AOS_1RGBFETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
     drawCmd[PULLER_AOS_3FETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
 
     drawCmd[PULLER_SOA_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_SOA_MODE].useIndices = false;
-    drawCmd[PULLER_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_SOA_MODE].firstVertex = 0;
-    drawCmd[PULLER_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].useIndices = false;
-    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].firstVertex = 0;
-    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_IMAGE_AOS_3FETCH_MODE] = drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE];
 
     drawCmd[PULLER_IMAGE_SOA_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_IMAGE_SOA_MODE].useIndices = false;
-    drawCmd[PULLER_IMAGE_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_IMAGE_SOA_MODE].firstVertex = 0;
-    drawCmd[PULLER_IMAGE_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_IMAGE_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_IMAGE_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].useIndices = false;
-    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].firstVertex = 0;
-    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_SSBO_AOS_3FETCH_MODE] = drawCmd[PULLER_SSBO_AOS_1FETCH_MODE];
 
     drawCmd[PULLER_SSBO_SOA_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_SSBO_SOA_MODE].useIndices = false;
-    drawCmd[PULLER_SSBO_SOA_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_SSBO_SOA_MODE].firstVertex = 0;
-    drawCmd[PULLER_SSBO_SOA_MODE].vertexCount = (GLuint)buddhaObj.Indices.size();
+    drawCmd[PULLER_SSBO_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_SSBO_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
     drawCmd[PULLER_OBJ_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_OBJ_MODE].useIndices = false;
-    drawCmd[PULLER_OBJ_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_OBJ_MODE].firstVertex = 0;
-    drawCmd[PULLER_OBJ_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
+    drawCmd[PULLER_OBJ_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_OBJ_MODE].drawArrays.count = (GLuint)buddhaObj.PositionIndices.size();
 
     drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexArray = nullVertexArray;
-    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].useIndices = false;
-    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].prim_type = GL_TRIANGLES;
-    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].firstVertex = 0;
-    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].drawType = DRAWCMD_DRAWARRAYS;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].drawArrays.count = (GLuint)buddhaObj.PositionIndices.size();
 
-    drawCmd[ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
-    drawCmd[ASSEMBLER_MODE].useIndices = true;
-    drawCmd[ASSEMBLER_MODE].prim_type = GL_TRIANGLES_ADJACENCY; // hack to get patches of 6 vertices
-    drawCmd[ASSEMBLER_MODE].firstVertex = 0;
-    drawCmd[ASSEMBLER_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size() * 2;
+    drawCmd[GS_ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
+    drawCmd[GS_ASSEMBLER_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[GS_ASSEMBLER_MODE].primType = GL_TRIANGLES_ADJACENCY; // hack to get patches of 6 vertices
+    drawCmd[GS_ASSEMBLER_MODE].drawElements.count = (GLuint)buddhaObj.PositionIndices.size() * 2;
+
+    drawCmd[TS_ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
+    drawCmd[TS_ASSEMBLER_MODE].drawType = DRAWCMD_DRAWELEMENTS;
+    drawCmd[TS_ASSEMBLER_MODE].primType = GL_PATCHES;
+    drawCmd[TS_ASSEMBLER_MODE].patchVertices = 6;
+    drawCmd[TS_ASSEMBLER_MODE].drawElements.count = (GLuint)buddhaObj.PositionIndices.size() * 2;
 
     // create auxiliary texture buffers
     glGenTextures(1, &indexTexBufferR32I);
@@ -748,12 +738,14 @@ BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filenam
 
 }
 
-GLuint BuddhaDemo::createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader) {
+GLuint BuddhaDemo::createProgramPipeline(GLuint vertexShader, GLuint tessControlShader, GLuint tessEvaluationShader, GLuint geometryShader, GLuint fragmentShader) {
 
     GLuint pipeline;
     glGenProgramPipelines(1, &pipeline);
 
     if (vertexShader != 0) glUseProgramStages(pipeline, GL_VERTEX_SHADER_BIT, vertexShader);
+    if (tessControlShader != 0) glUseProgramStages(pipeline, GL_TESS_CONTROL_SHADER, tessControlShader);
+    if (tessEvaluationShader != 0) glUseProgramStages(pipeline, GL_TESS_EVALUATION_SHADER, tessEvaluationShader);
     if (geometryShader != 0) glUseProgramStages(pipeline, GL_GEOMETRY_SHADER_BIT, geometryShader);
     if (fragmentShader != 0) glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragmentShader);
 
@@ -780,83 +772,88 @@ void BuddhaDemo::loadShaders()
     fragmentProg = loadShaderProgramFromFile("shaders/common.frag", 0, GL_FRAGMENT_SHADER).prog;
 
     vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, fragmentProg);
+    progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FIXED_FUNCTION_AOS_XYZW_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE], 0, fragmentProg);
+    progPipeline[FIXED_FUNCTION_AOS_XYZW_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
+    progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FIXED_FUNCTION_INTERLEAVED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE], 0, fragmentProg);
+    progPipeline[FIXED_FUNCTION_INTERLEAVED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBAFETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBFETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[FETCHER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[FETCHER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_SOA_MODE], 0, fragmentProg);
+    progPipeline[FETCHER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBAFETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBFETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SOA_MODE], 0, fragmentProg);
+    progPipeline[PULLER_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_image_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_SOA_MODE], 0, fragmentProg);
+    progPipeline[PULLER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_1FETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_1FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_3FETCH_MODE], 0, fragmentProg);
+    progPipeline[PULLER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_3FETCH_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_soa.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
+    progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, 0, 0, fragmentProg);
 
     vertexProg[PULLER_OBJ_MODE] = loadShaderProgramFromFile("shaders/puller_obj.vert", 0, GL_VERTEX_SHADER);
-    progPipeline[PULLER_OBJ_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_MODE], 0, fragmentProg);
+    progPipeline[PULLER_OBJ_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_MODE], 0, 0, 0, fragmentProg);
 
-    vertexProg[ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", 0, GL_VERTEX_SHADER);
-    GLuint assemblyGeom = loadShaderProgramFromFile("shaders/assembler.geom", 0, GL_GEOMETRY_SHADER).prog;
-    progPipeline[ASSEMBLER_MODE] = createProgramPipeline(vertexProg[ASSEMBLER_MODE], assemblyGeom, fragmentProg);
+    vertexProg[GS_ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", 0, GL_VERTEX_SHADER);
+    GLuint assemblyGeom = loadShaderProgramFromFile("shaders/gs_assembler.geom", 0, GL_GEOMETRY_SHADER).prog;
+    progPipeline[GS_ASSEMBLER_MODE] = createProgramPipeline(vertexProg[GS_ASSEMBLER_MODE], 0, 0, assemblyGeom, fragmentProg);
+
+    vertexProg[TS_ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", 0, GL_VERTEX_SHADER);
+    GLuint assemblyTesc = loadShaderProgramFromFile("shaders/ts_assembler.tesc", 0, GL_TESS_CONTROL_SHADER).prog;
+    GLuint assemblyTese = loadShaderProgramFromFile("shaders/ts_assembler.tese", 0, GL_TESS_EVALUATION_SHADER).prog;
+    progPipeline[TS_ASSEMBLER_MODE] = createProgramPipeline(vertexProg[TS_ASSEMBLER_MODE], assemblyTesc, assemblyTese, 0, fragmentProg);
 }
 
 SoftVertexCacheConfig BuddhaDemo::GetSoftVertexCacheConfig() const
@@ -879,7 +876,7 @@ void BuddhaDemo::SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config)
     vertexProg[PULLER_OBJ_SOFTCACHE_MODE] = loadShaderProgramFromFile("shaders/puller_obj_softcache.vert", softcache_preamble.c_str(), GL_VERTEX_SHADER);
     
     glDeleteProgramPipelines(1, &progPipeline[PULLER_OBJ_SOFTCACHE_MODE]);
-    progPipeline[PULLER_OBJ_SOFTCACHE_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_SOFTCACHE_MODE], 0, fragmentProg);
+    progPipeline[PULLER_OBJ_SOFTCACHE_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_SOFTCACHE_MODE], 0, 0, 0, fragmentProg);
 
     glDeleteBuffers(1, &vertexCacheBucketsBuffer);
     glGenBuffers(1, &vertexCacheBucketsBuffer);
@@ -1104,7 +1101,12 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, vertexCacheBucketsBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, vertexCacheBucketLocksBuffer);
     }
-    else if (mode == ASSEMBLER_MODE)
+    else if (mode == GS_ASSEMBLER_MODE)
+    {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.uniquePositionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.uniqueNormalBufferXYZW);
+    }
+    else if (mode == TS_ASSEMBLER_MODE)
     {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.uniquePositionBufferXYZW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.uniqueNormalBufferXYZW);
@@ -1114,16 +1116,59 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
 
     glBindVertexArray(model.drawCmd[mode].vertexArray);
 
+    if (model.drawCmd[mode].primType == GL_PATCHES)
+    {
+        assert(model.drawCmd[mode].patchVertices >= 1);
+
+        glPatchParameteri(GL_PATCH_VERTICES, model.drawCmd[mode].patchVertices);
+        glPatchParameterfv(GL_PATCH_DEFAULT_OUTER_LEVEL, model.drawCmd[mode].patchDefaultOuterLevel);
+        glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, model.drawCmd[mode].patchDefaultInnerLevel);
+    }
+    else
+    {
+        assert(model.drawCmd[mode].patchVertices == 0);
+    }
+
     glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
 
-    if (model.drawCmd[mode].useIndices) {
-        glDrawElements(model.drawCmd[mode].prim_type, model.drawCmd[mode].indexCount, GL_UNSIGNED_INT, (GLchar*)0 + model.drawCmd[mode].indexOffset);
+    if (model.drawCmd[mode].drawType == DRAWCMD_DRAWARRAYS)
+    {
+        assert(model.drawCmd[mode].drawArrays.count >= 1);
+
+        glDrawArraysInstancedBaseInstance(
+            model.drawCmd[mode].primType,
+            model.drawCmd[mode].drawArrays.first,
+            model.drawCmd[mode].drawArrays.count,
+            model.drawCmd[mode].drawArrays.instanceCount,
+            model.drawCmd[mode].drawArrays.baseInstance);
     }
-    else {
-        glDrawArrays(model.drawCmd[mode].prim_type, model.drawCmd[mode].firstVertex, model.drawCmd[mode].vertexCount);
+    else if (model.drawCmd[mode].drawType == DRAWCMD_DRAWELEMENTS)
+    {
+        glDrawElementsInstancedBaseVertexBaseInstance(
+            model.drawCmd[mode].primType,
+            model.drawCmd[mode].drawElements.count,
+            GL_UNSIGNED_INT,
+            (GLuint*)0 + model.drawCmd[mode].drawElements.firstIndex,
+            model.drawCmd[mode].drawElements.instanceCount,
+            model.drawCmd[mode].drawElements.baseVertex,
+            model.drawCmd[mode].drawElements.baseInstance);
+    }
+    else
+    {
+        assert(!"invalid drawType");
     }
 
     glEndQuery(GL_TIME_ELAPSED);
+
+    if (model.drawCmd[mode].primType == GL_PATCHES)
+    {
+        const float kDefaultInner[2] = { 1,1 };
+        const float kDefaultOuter[4] = { 1,1,1,1 };
+
+        glPatchParameteri(GL_PATCH_VERTICES, 3);
+        glPatchParameterfv(GL_PATCH_DEFAULT_OUTER_LEVEL, kDefaultOuter);
+        glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, kDefaultInner);
+    }
 
     glBindVertexArray(0);
     
@@ -1148,19 +1193,26 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
 
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    if (mode == PULLER_OBJ_SOFTCACHE_MODE)
+    {
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-    glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheCounterBuffer);
-    glBindBuffer(GL_COPY_WRITE_BUFFER, vertexCacheCounterReadbackBuffer);
-    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(GLuint));
-    glBindBuffer(GL_COPY_READ_BUFFER, 0);
-    glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
+        glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheCounterBuffer);
+        glBindBuffer(GL_COPY_WRITE_BUFFER, vertexCacheCounterReadbackBuffer);
+        glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(GLuint));
+        glBindBuffer(GL_COPY_READ_BUFFER, 0);
+        glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
-    GLuint* pFinalCounter = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
-    lastFrameNumVertexCacheMisses = *pFinalCounter;
-    glUnmapBuffer(GL_ARRAY_BUFFER);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
+        GLuint* pFinalCounter = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
+        lastFrameNumVertexCacheMisses = *pFinalCounter;
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    else
+    {
+        lastFrameNumVertexCacheMisses = 0;
+    }
 
     lastFrameMeshID = meshID;
 }

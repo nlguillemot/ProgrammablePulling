@@ -18,7 +18,7 @@ void main()
     {
         outVertexPosition = assembly[i * 2 + 0];
         outVertexNormal = assembly[i * 2 + 1];
-        gl_Position = Transform.ProjectionMatrix * vec4(assembly[i * 2 + 0].xyz, 1);
+        gl_Position = Transform.ProjectionMatrix * vec4(outVertexPosition, 1);
         EmitVertex();
     }
 

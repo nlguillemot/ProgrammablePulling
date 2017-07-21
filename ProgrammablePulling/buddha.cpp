@@ -1,19 +1,21 @@
-/*
- * dragon.cpp
- *
- *  Created on: Sep 24, 2011
- *      Author: aqnuep
- */
+#include "buddha.h"
 
-#include <iostream>
-#include <fstream>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
 #include "wavefront.h"
-#include "buddha.h"
+
+#include <iostream>
+#include <fstream>
+
+#define CACHE_BUCKET_UNLOCKED 0
+#define CACHE_BUCKET_LOCKED 1
+// Keep this in sync with struct CachedVertex
+#define VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS 16
 
 namespace buddha {
     
@@ -44,9 +46,8 @@ struct DrawCommand {
 	};
 };
 
-class BuddhaDemo : public IBuddhaDemo {
-protected:
-
+class BuddhaDemo : public IBuddhaDemo
+{
     Camera camera;                          // camera data
 
     Transform transform;                    // transformation data
@@ -70,6 +71,8 @@ protected:
         GLuint normalIndexBuffer;
         GLuint uniquePositionBufferXYZW;
         GLuint uniqueNormalBufferXYZW;
+
+        int numUniqueVerts;
 
         GLuint assemblyIndexBuffer;
         GLuint assemblyVertexArray;
@@ -111,6 +114,8 @@ protected:
         GLuint normalYTexBufferR32F;
         GLuint normalZTexBufferR32F;
 
+        GLuint vertexCacheBuffer;
+
         DrawCommand drawCmd[NUMBER_OF_MODES];   // draw command for the three vertex pulling modes
 
         void load(const char* path);
@@ -122,9 +127,19 @@ protected:
 
     float cameraRotationFactor;             // camera rotation factor between [0,2*PI)
 
+    GLuint vertexCacheCounterBuffer;
+    GLuint vertexCacheBucketsBuffer;
+    GLuint vertexCacheBucketLocksBuffer;
+    GLuint vertexCacheCounterReadbackBuffer;
+
+    SoftVertexCacheConfig softVertexCacheConfig;
+
+    int lastFrameNumVertexCacheMisses;
+    int lastFrameMeshID;
+
     void loadShaders();
 
-    VertexProg loadShaderProgramFromFile(const char* filename, GLenum shaderType);
+    VertexProg loadShaderProgramFromFile(const char* filename, const char* preamble, GLenum shaderType);
     GLuint createProgramPipeline(GLuint vertexShader, GLuint geometryShader, GLuint fragmentShader);
     
     GLuint createProgramPipeline(const VertexProg& vertexShader, GLuint geometryShader, GLuint fragmentShader)
@@ -142,6 +157,30 @@ public:
     std::string GetModeName(int mode) override
     {
         return vertexProg[mode].name;
+    }
+
+    SoftVertexCacheConfig GetSoftVertexCacheConfig() const override;
+
+    void SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config) override;
+
+    void GetSoftVertexCacheStats(int* pNumCacheMisses, int* pTotalNumVerts) const override
+    {
+        if (pNumCacheMisses)
+            *pNumCacheMisses = lastFrameNumVertexCacheMisses;
+        if (pTotalNumVerts)
+            *pTotalNumVerts = models[lastFrameMeshID].numUniqueVerts;
+    }
+
+    void* operator new(size_t sz)
+    {
+        void* m = malloc(sz);
+        memset(m, 0, sz);
+        return m;
+    }
+
+    void operator delete(void* mem)
+    {
+        free(mem);
     }
 };
 
@@ -180,6 +219,8 @@ void BuddhaDemo::PerModel::load(const char* path)
         glBufferStorage(GL_ARRAY_BUFFER, bufferSize, buddhaObj.NormalIndices.data(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
+
+    numUniqueVerts = int(buddhaObj.UniquePositions.size());
 
     // unique position buffer
     {
@@ -535,6 +576,12 @@ void BuddhaDemo::PerModel::load(const char* path)
     drawCmd[PULLER_OBJ_MODE].firstVertex = 0;
     drawCmd[PULLER_OBJ_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
 
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].useIndices = false;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].prim_type = GL_TRIANGLES;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].firstVertex = 0;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexCount = (GLuint)buddhaObj.PositionIndices.size();
+
     drawCmd[ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
     drawCmd[ASSEMBLER_MODE].useIndices = true;
     drawCmd[ASSEMBLER_MODE].prim_type = GL_TRIANGLES_ADJACENCY; // hack to get patches of 6 vertices
@@ -611,26 +658,46 @@ void BuddhaDemo::PerModel::load(const char* path)
         glTexBuffer(GL_TEXTURE_BUFFER, format, *pVertexBuffer);
         glBindTexture(GL_TEXTURE_BUFFER, 0);
     }
+
+    glGenBuffers(1, &vertexCacheBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBuffer);
+    glBufferStorage(GL_ARRAY_BUFFER, VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS * sizeof(uint32_t) * buddhaObj.PositionIndices.size(), NULL, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-BuddhaDemo::BuddhaDemo() {
+BuddhaDemo::BuddhaDemo()
+{
+    std::cout << "> Initializing renderer..." << std::endl;
 
-	std::cout << "> Initializing scene data..." << std::endl;
+    // initialize camera data
+    cameraRotationFactor = 0.f;
 
-	// initialize camera data
-	cameraRotationFactor = 0.f;
-
-	// create uniform buffer
-	glGenBuffers(1, &transformUB);
-	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-	glBufferStorage(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_DYNAMIC_STORAGE_BIT);
+    // create uniform buffer
+    glGenBuffers(1, &transformUB);
+    glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
+    glBufferStorage(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_DYNAMIC_STORAGE_BIT);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glGenQueries(1, &timeElapsedQuery);
 
-	loadShaders();
+    loadShaders();
 
-    std::cout << "> Done!" << std::endl;
+    glGenBuffers(1, &vertexCacheCounterBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterBuffer);
+    const uint32_t initialCounter = 0;
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), &initialCounter, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &vertexCacheCounterReadbackBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), NULL, GL_CLIENT_STORAGE_BIT | GL_MAP_READ_BIT);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    SoftVertexCacheConfig cacheConfig;
+    cacheConfig.NumCacheBucketBits = 10;
+    cacheConfig.NumCacheLockAttempts = 1024;
+    cacheConfig.NumCacheLockPushThroughAttempts = 128;
+    SetSoftVertexCacheConfig(cacheConfig);
 }
 
 int BuddhaDemo::addMesh(const char* path)
@@ -641,7 +708,7 @@ int BuddhaDemo::addMesh(const char* path)
     return (int)models.size() - 1;
 }
 
-BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filename, GLenum shaderType)
+BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filename, const char* preamble, GLenum shaderType)
 {
     std::ifstream file(filename);
     if (!file) {
@@ -660,6 +727,8 @@ BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filenam
     }
 
     const GLchar* sources[] = {
+        "#version 430 core\n",
+        preamble ? preamble : "",
         source.c_str()
     };
 
@@ -703,91 +772,126 @@ GLuint BuddhaDemo::createProgramPipeline(GLuint vertexShader, GLuint geometrySha
     return pipeline;
 }
 
-void BuddhaDemo::loadShaders() {
-
+void BuddhaDemo::loadShaders()
+{
     std::cout << "> Loading shaders..." << std::endl;
 
     // load common fragment shader
-    fragmentProg = loadShaderProgramFromFile("shaders/common.frag", GL_FRAGMENT_SHADER).prog;
+    fragmentProg = loadShaderProgramFromFile("shaders/common.frag", 0, GL_FRAGMENT_SHADER).prog;
 
-    vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+    vertexProg[FIXED_FUNCTION_AOS_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_AOS_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_MODE], 0, fragmentProg);
 
-    vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+    vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_AOS_XYZW_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_AOS_XYZW_MODE], 0, fragmentProg);
 
-    vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[FIXED_FUNCTION_SOA_MODE] = loadShaderProgramFromFile("shaders/fixed_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_SOA_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", GL_VERTEX_SHADER);
+    vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE] = loadShaderProgramFromFile("shaders/fixed_aos.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FIXED_FUNCTION_INTERLEAVED_MODE] = createProgramPipeline(vertexProg[FIXED_FUNCTION_INTERLEAVED_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_1FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_image_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_IMAGE_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_1FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[FETCHER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[FETCHER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/fetcher_ssbo_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[FETCHER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[FETCHER_SSBO_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_AOS_1RGBAFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_AOS_1RGBAFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBAFETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_AOS_1RGBFETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_AOS_1RGBFETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_1RGBFETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_IMAGE_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_1FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_image_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_IMAGE_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_image_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_IMAGE_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_image_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_IMAGE_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_IMAGE_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_1fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_SSBO_AOS_1FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_1fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_SSBO_AOS_1FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_1FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_3fetch.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_SSBO_AOS_3FETCH_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_aos_3fetch.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_SSBO_AOS_3FETCH_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_AOS_3FETCH_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_soa.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_SSBO_SOA_MODE] = loadShaderProgramFromFile("shaders/puller_ssbo_soa.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_SSBO_SOA_MODE] = createProgramPipeline(vertexProg[PULLER_SSBO_SOA_MODE], 0, fragmentProg);
 
-    vertexProg[PULLER_OBJ_MODE] = loadShaderProgramFromFile("shaders/puller_obj.vert", GL_VERTEX_SHADER);
+    vertexProg[PULLER_OBJ_MODE] = loadShaderProgramFromFile("shaders/puller_obj.vert", 0, GL_VERTEX_SHADER);
     progPipeline[PULLER_OBJ_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_MODE], 0, fragmentProg);
 
-    vertexProg[ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", GL_VERTEX_SHADER);
-    GLuint assemblyGeom = loadShaderProgramFromFile("shaders/assembler.geom", GL_GEOMETRY_SHADER).prog;
+    vertexProg[ASSEMBLER_MODE] = loadShaderProgramFromFile("shaders/assembler.vert", 0, GL_VERTEX_SHADER);
+    GLuint assemblyGeom = loadShaderProgramFromFile("shaders/assembler.geom", 0, GL_GEOMETRY_SHADER).prog;
     progPipeline[ASSEMBLER_MODE] = createProgramPipeline(vertexProg[ASSEMBLER_MODE], assemblyGeom, fragmentProg);
+}
+
+SoftVertexCacheConfig BuddhaDemo::GetSoftVertexCacheConfig() const
+{
+    return softVertexCacheConfig;
+}
+
+void BuddhaDemo::SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config)
+{
+    softVertexCacheConfig = config;
+
+    std::string softcache_preamble =
+        "#define NUM_CACHE_BUCKETS " + std::to_string(1 << (config.NumCacheBucketBits - 1)) + "\n" +
+        "#define CACHE_BUCKET_UNLOCKED " + std::to_string(CACHE_BUCKET_UNLOCKED) + "\n" +
+        "#define CACHE_BUCKET_LOCKED " + std::to_string(CACHE_BUCKET_LOCKED) + "\n" +
+        "#define NUM_CACHE_LOCK_ATTEMPTS " + std::to_string(config.NumCacheLockAttempts) + "\n" +
+        "#define NUM_CACHE_LOCK_PUSH_THROUGH_ATTEMPTS " + std::to_string(config.NumCacheLockPushThroughAttempts) + "\n";
+
+    glDeleteProgram(vertexProg[PULLER_OBJ_SOFTCACHE_MODE].prog);
+    vertexProg[PULLER_OBJ_SOFTCACHE_MODE] = loadShaderProgramFromFile("shaders/puller_obj_softcache.vert", softcache_preamble.c_str(), GL_VERTEX_SHADER);
+    
+    glDeleteProgramPipelines(1, &progPipeline[PULLER_OBJ_SOFTCACHE_MODE]);
+    progPipeline[PULLER_OBJ_SOFTCACHE_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_SOFTCACHE_MODE], 0, fragmentProg);
+
+    glDeleteBuffers(1, &vertexCacheBucketsBuffer);
+    glGenBuffers(1, &vertexCacheBucketsBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketsBuffer);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint) * 4 * GLsizei(1 << (config.NumCacheBucketBits - 1)), NULL, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glDeleteBuffers(1, &vertexCacheBucketLocksBuffer);
+    glGenBuffers(1, &vertexCacheBucketLocksBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketLocksBuffer);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint) * GLsizei(1 << (config.NumCacheBucketBits - 1)), NULL, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds)
@@ -971,6 +1075,35 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.uniquePositionBufferXYZW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.uniqueNormalBufferXYZW);
     }
+    else if (mode == PULLER_OBJ_SOFTCACHE_MODE)
+    {
+        // make sure any previous reads/writes of these buffers are done before resetting them
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+        const uint32_t kZero = 0;
+        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterBuffer);
+        glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kZero);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        const uint32_t kInvalidAddress = -1;
+        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketsBuffer);
+        glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kInvalidAddress);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        const uint32_t kUnlocked = CACHE_BUCKET_UNLOCKED;
+        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketLocksBuffer);
+        glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kUnlocked);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.positionIndexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.normalIndexBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, model.uniquePositionBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, model.uniqueNormalBufferXYZW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, vertexCacheCounterBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, model.vertexCacheBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, vertexCacheBucketsBuffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, vertexCacheBucketLocksBuffer);
+    }
     else if (mode == ASSEMBLER_MODE)
     {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, model.uniquePositionBufferXYZW);
@@ -1014,6 +1147,24 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
 
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
+
+    glFinish();
+
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+    glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheCounterBuffer);
+    glBindBuffer(GL_COPY_WRITE_BUFFER, vertexCacheCounterReadbackBuffer);
+    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(GLuint));
+    glBindBuffer(GL_COPY_READ_BUFFER, 0);
+    glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
+    GLuint* pFinalCounter = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
+    lastFrameNumVertexCacheMisses = *pFinalCounter;
+    glUnmapBuffer(GL_ARRAY_BUFFER);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    lastFrameMeshID = meshID;
 }
 
 } /* namespace buddha */

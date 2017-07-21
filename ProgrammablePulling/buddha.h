@@ -13,8 +13,10 @@
 #include <memory>
 #include <string>
 
-#define DEFAULT_SCREEN_WIDTH         1024
-#define DEFAULT_SCREEN_HEIGHT        768
+#define DEFAULT_SCREEN_WIDTH      1024
+#define DEFAULT_SCREEN_HEIGHT     768
+
+#define DEFAULT_NUM_CACHE_BUCKETS 1024
 
 namespace buddha {
 
@@ -48,10 +50,18 @@ enum VertexPullingMode
     PULLER_SSBO_AOS_3FETCH_MODE,
     PULLER_SSBO_SOA_MODE,
     PULLER_OBJ_MODE,
+    PULLER_OBJ_SOFTCACHE_MODE,
     //
     ASSEMBLER_MODE,
     //
     NUMBER_OF_MODES
+};
+
+struct SoftVertexCacheConfig
+{
+    int NumCacheBucketBits;
+    int NumCacheLockAttempts;
+    int NumCacheLockPushThroughAttempts;
 };
 
 class IBuddhaDemo
@@ -64,6 +74,10 @@ public:
     virtual void renderScene(int meshID, const glm::mat4& modelMatrix, int screenWidth, int screenHeight, float dtsec, VertexPullingMode mode, uint64_t* elapsedNanoseconds) = 0;
 
     virtual std::string GetModeName(int mode) = 0;
+
+    virtual SoftVertexCacheConfig GetSoftVertexCacheConfig() const = 0;
+    virtual void SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config) = 0;
+    virtual void GetSoftVertexCacheStats(int* pNumCacheMisses, int* pTotalNumVerts) const = 0;
 };
 
 } /* namespace buddha */

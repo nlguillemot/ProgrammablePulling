@@ -1,5 +1,3 @@
-#version 430 core
-
 layout(triangles_adjacency) in; // hack to pass in a patch of 6 inputs to the GS
 layout(triangle_strip, max_vertices = 3) out;
 

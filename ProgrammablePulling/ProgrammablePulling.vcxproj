@@ -127,6 +127,7 @@
     <None Include="shaders\puller_image_aos_3fetch.vert" />
     <None Include="shaders\puller_image_soa.vert" />
     <None Include="shaders\puller_obj.vert" />
+    <None Include="shaders\puller_obj_softcache.vert" />
     <None Include="shaders\puller_soa.vert" />
     <None Include="shaders\puller_ssbo_aos_1fetch.vert" />
     <None Include="shaders\puller_ssbo_aos_3fetch.vert" />

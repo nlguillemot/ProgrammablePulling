@@ -1,5 +1,3 @@
-#version 430 core
-
 in vec3 outVertexPosition;
 in vec3 outVertexNormal;
 

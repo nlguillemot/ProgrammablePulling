@@ -123,5 +123,8 @@
     <None Include="shaders\assembler.geom">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shaders\puller_obj_softcache.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

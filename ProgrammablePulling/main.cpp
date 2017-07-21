@@ -28,8 +28,6 @@
 
 #define MAIN_TITLE	"Programmable Pulling"
 
-static int g_VertexPullingMode = buddha::FIXED_FUNCTION_AOS_MODE;
-
 static void errorCallback(int error, const char* description)
 {
     fprintf(stderr, "GLFW error %d: %s\n", error, description);
@@ -174,6 +172,7 @@ int main()
     modeStringFormats[buddha::PULLER_SSBO_AOS_3FETCH_MODE    ] = "Pull index & vertex |   AoS  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
     modeStringFormats[buddha::PULLER_SSBO_SOA_MODE           ] = "Pull index & vertex |   SoA  | Three R32F SSBO loads   | SSBO      | %8llu microseconds | %s";
     modeStringFormats[buddha::PULLER_OBJ_MODE                ] = "Pull index & vertex |   AoS  | OBJ-style multi-index   | SSBO      | %8llu microseconds | %s";
+    modeStringFormats[buddha::PULLER_OBJ_SOFTCACHE_MODE      ] = "Pull w/ soft cache  |   AoS  | OBJ-style + soft cache  | SSBO      | %8llu microseconds | %s";
     modeStringFormats[buddha::ASSEMBLER_MODE                 ] = "Geometry assembly   |   AoS  | OBJ-style + IA in GS    | SSBO      | %8llu microseconds | %s";
 
     for (const char* mode : modeStringFormats)
@@ -183,6 +182,16 @@ int main()
 
     double then = glfwGetTime();
     bool animate = false;
+
+    // asdf
+    int numCacheBucketBits = 0;
+    for (uint32_t i = 0; i <= 31; i++)
+    {
+        if ((1 << i) == DEFAULT_NUM_CACHE_BUCKETS)
+        {
+            numCacheBucketBits = i + 1;
+        }
+    }
 
     std::vector<std::vector<uint64_t>> meshTotalTimes;
     std::vector<std::vector<int>> meshNumTimes;
@@ -201,11 +210,13 @@ int main()
     const char* vendor = (const char*)glGetString(GL_VENDOR);
     const char* renderer = (const char*)glGetString(GL_RENDERER);
 
+    int currDemoMode = buddha::FIXED_FUNCTION_AOS_MODE;
+
     for (;;)
     {
         if (nowBenchmarking)
         {
-            g_VertexPullingMode = currBenchmarkMode;
+            currDemoMode = currBenchmarkMode;
             
             currBenchmarkFrame++;
             if (currBenchmarkFrame == kFramesPerBenchmarkMode)
@@ -233,14 +244,14 @@ int main()
             meshMatrices[currMeshIndex],
             screenWidth, screenHeight,
             animate ? (float)dtsec : 0.0f, 
-            (buddha::VertexPullingMode)g_VertexPullingMode, 
+            (buddha::VertexPullingMode)currDemoMode,
             &elapsedNanoseconds);
 
         uint64_t* totalTimes = meshTotalTimes[currMeshIndex].data();
         int* numTimes = meshNumTimes[currMeshIndex].data();
 
-        numTimes[g_VertexPullingMode] += 1;
-        totalTimes[g_VertexPullingMode] += elapsedNanoseconds;
+        numTimes[currDemoMode] += 1;
+        totalTimes[currDemoMode] += elapsedNanoseconds;
 
         ImGui::SetNextWindowSize(ImVec2(900.0f, 700.0f), ImGuiSetCond_Always);
         if (ImGui::Begin("Info", 0, ImGuiWindowFlags_NoResize))
@@ -330,7 +341,7 @@ int main()
 
             ImGui::PushItemWidth(-1);
             ImGui::Text(" %s", modeStringHeader);
-            ImGui::ListBox("##Mode", &g_VertexPullingMode, items_getter, &getter_ctx, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
+            ImGui::ListBox("##Mode", &currDemoMode, items_getter, &getter_ctx, buddha::NUMBER_OF_MODES, buddha::NUMBER_OF_MODES);
             ImGui::PopItemWidth();
 
             ImGui::GetStyle().Colors[ImGuiCol_Text] = ImGuiStyle().Colors[ImGuiCol_Text];
@@ -340,6 +351,28 @@ int main()
             ImGui::ListBox("Mesh", &currMeshIndex, meshDisplayNamesCStrs.data(), (int)meshDisplayNamesCStrs.size());
 
             ImGui::Checkbox("Animate", &animate);
+
+            if (currDemoMode == buddha::PULLER_OBJ_SOFTCACHE_MODE)
+            {
+                int numCacheMisses;
+                int totalNumVerts;
+                pDemo->GetSoftVertexCacheStats(&numCacheMisses, &totalNumVerts);
+
+                ImGui::Text("Num vertex cache misses: %d / %d", numCacheMisses, totalNumVerts);
+
+                buddha::SoftVertexCacheConfig cacheConfig = pDemo->GetSoftVertexCacheConfig();
+                bool updatedConfig = false;
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache bucket bits", &cacheConfig.NumCacheBucketBits, 1, 20);
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache lock attempts", &cacheConfig.NumCacheLockAttempts, 0, 1024);
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache lock push-through attempts", &cacheConfig.NumCacheLockPushThroughAttempts, 0, 1024);
+                if (updatedConfig)
+                {
+                    pDemo->SetSoftVertexCacheConfig(cacheConfig);
+
+                    totalTimes[buddha::PULLER_OBJ_SOFTCACHE_MODE] = 0;
+                    numTimes[buddha::PULLER_OBJ_SOFTCACHE_MODE] = 0;
+                }
+            }
 
             bool wasBenchmarking = nowBenchmarking;
             ImGui::Checkbox("Benchmark", &nowBenchmarking);

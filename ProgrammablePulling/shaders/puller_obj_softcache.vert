@@ -52,10 +52,10 @@ int get_address_from_bucket(int id, uvec4 bucket)
 
 // From "Deferred Attribute Interpolation Shading" (Listing 3.1) in GPU Pro 7
 // Authors: Christoph Schied and Carsten Dachsbacher
-void lookup_memoization_cache(int id, int hash_mod, int store_size, out int address, out bool should_store)
+void lookup_memoization_cache(int id, int id_mask, int store_size, out int address, out bool should_store)
 {
     should_store = false;
-    int hash = id & hash_mod;
+    int hash = id & id_mask;
     uvec4 b = CacheBuckets[hash];
     address = get_address_from_bucket(id, b);
     for (int k = 0; address < 0 && k < NUM_CACHE_LOCK_ATTEMPTS; k++)
@@ -113,12 +113,11 @@ void main()
     lookup_memoization_cache(int(id), NUM_CACHE_BUCKETS - 1, 1, address, should_store);
     if (!should_store)
     {
-        CachedVertex cached = VertexCache[address];
-        if (cached.PositionIndex == positionIndex && cached.NormalIndex == normalIndex)
+        if (VertexCache[address].PositionIndex == positionIndex && VertexCache[address].NormalIndex == normalIndex)
         {
-            outVertexPosition = cached.m_outVertexPosition.xyz;
-            outVertexNormal = cached.m_outVertexNormal.xyz;
-            gl_Position = cached.m_gl_Position;
+            outVertexPosition = VertexCache[address].m_outVertexPosition.xyz;
+            outVertexNormal = VertexCache[address].m_outVertexNormal.xyz;
+            gl_Position = VertexCache[address].m_gl_Position;
             return;
         }
     }
@@ -137,10 +136,10 @@ void main()
 
     if (should_store)
     {
-        CachedVertex cached;
-        cached.m_outVertexPosition.xyz = outVertexPosition;
-        cached.m_outVertexNormal.xyz = outVertexNormal;
-        cached.m_gl_Position = gl_Position;
-        VertexCache[address] = cached;
+        VertexCache[address].PositionIndex = positionIndex;
+        VertexCache[address].NormalIndex = normalIndex;
+        VertexCache[address].m_outVertexPosition.xyz = outVertexPosition;
+        VertexCache[address].m_outVertexNormal.xyz = outVertexNormal;
+        VertexCache[address].m_gl_Position = gl_Position;
     }
 }

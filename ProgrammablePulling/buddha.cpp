@@ -1148,8 +1148,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
 
-    glFinish();
-
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheCounterBuffer);

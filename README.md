@@ -24,6 +24,26 @@ For specifics, the shaders used in each configuration are independent, and in th
 
 There is also a mode that measures PTN PTN PTN with VAOs (not programmable). In this benchmark, there are only positions and normals, as used in all tests. No texcoords.
 
+## Special Modes
+
+Some modes of the program are a bit fancier.
+
+### OBJ-Style multi-index
+
+Uses fully programmable pulling to read mesh data layed out in the same format as obj. This means there is a separate index buffer for positions and for normals.
+
+### OBJ-Style + soft cache
+
+Implements a post-transform vertex cache in software, based on the code in "Deferred Attribute Interpolation Shading" (Listing 3.1) in GPU Pro 7 (authors: Christoph Schied and Carsten Dachsbacher.)
+
+### Assembly in GS
+
+Runs 6 vertex shader instances per triangle, and each instance outputs either a position or a normal. The 3 positions and 3 normals are assembled together into a primitve in a geometry shader.
+
+### Assembly in TS
+
+Runs 6 vertex shader instances per triangle, and each instance outputs either a position or a normal. The 3 positions and 3 normals are assembled together into a primitve in a tessellation shader. *Currently bugged, don't know why.*
+
 # Installation
 
 Check the "Releases" section of the GitHub repo if you want to just download the exe and run it. Requires Windows 10.

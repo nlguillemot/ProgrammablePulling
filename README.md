@@ -53,7 +53,7 @@ Number of times the vertex shader should try to acquire the cache bucket's share
 
 #### Soft vertex cache write lock attempts
 
-Number of times the vertex shader should try to acquire the cache bucket's shared readers-writer lock **for write access** before giving up and recomputing the vertex.
+Number of times the vertex shader should try to acquire the cache bucket's shared readers-writer lock **for write access** before giving up and using the recomputed vertex without caching it for somebody else to reuse it.
 
 #### Soft vertex cache entries per bucket
 

@@ -12,10 +12,10 @@
 #include <iostream>
 #include <fstream>
 
-#define CACHE_BUCKET_UNLOCKED 0
-#define CACHE_BUCKET_LOCKED 1
 // Keep this in sync with struct CachedVertex
-#define VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS 16
+#define VERTEX_CACHE_VERTEX_SIZE_IN_DWORDS 12
+// Keep this in sync with CacheEntry
+#define VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS 4
 
 namespace buddha {
     
@@ -151,7 +151,9 @@ class BuddhaDemo : public IBuddhaDemo
     GLuint vertexCacheCounterBuffer;
     GLuint vertexCacheBucketsBuffer;
     GLuint vertexCacheBucketLocksBuffer;
-    GLuint vertexCacheCounterReadbackBuffer;
+
+    GLuint vertexCacheMissCounterBuffer;
+    GLuint vertexCacheMissCounterReadbackBuffer;
 
     SoftVertexCacheConfig softVertexCacheConfig;
 
@@ -651,7 +653,7 @@ void BuddhaDemo::PerModel::load(const char* path)
 
     glGenBuffers(1, &vertexCacheBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBuffer);
-    glBufferStorage(GL_ARRAY_BUFFER, VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS * sizeof(uint32_t) * buddhaObj.PositionIndices.size(), NULL, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, VERTEX_CACHE_VERTEX_SIZE_IN_DWORDS * sizeof(uint32_t) * buddhaObj.PositionIndices.size(), NULL, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -674,19 +676,26 @@ BuddhaDemo::BuddhaDemo()
 
     glGenBuffers(1, &vertexCacheCounterBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterBuffer);
-    const uint32_t initialCounter = 0;
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), &initialCounter, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), NULL, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    glGenBuffers(1, &vertexCacheCounterReadbackBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
+    glGenBuffers(1, &vertexCacheMissCounterBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheMissCounterBuffer);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), NULL, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glGenBuffers(1, &vertexCacheMissCounterReadbackBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexCacheMissCounterReadbackBuffer);
     glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint), NULL, GL_CLIENT_STORAGE_BIT | GL_MAP_READ_BIT);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     SoftVertexCacheConfig cacheConfig;
-    cacheConfig.NumCacheBucketBits = 10;
-    cacheConfig.NumCacheLockAttempts = 1024;
-    cacheConfig.NumCacheLockPushThroughAttempts = 128;
+    cacheConfig.NumCacheBucketBits = 20;
+    cacheConfig.NumReadCacheLockAttempts = 1024;
+    cacheConfig.NumWriteCacheLockAttempts = 1024;
+    cacheConfig.NumCacheEntriesPerBucket = 2;
+    cacheConfig.MaxSimultaneousReaders = 1000000; // this MUST be greater than the maximum concurrency of the GPU.
+    cacheConfig.EnableCacheMissCounter = false;
     SetSoftVertexCacheConfig(cacheConfig);
 }
 
@@ -867,10 +876,15 @@ void BuddhaDemo::SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config)
 
     std::string softcache_preamble =
         "#define NUM_CACHE_BUCKETS " + std::to_string(1 << (config.NumCacheBucketBits - 1)) + "\n" +
-        "#define CACHE_BUCKET_UNLOCKED " + std::to_string(CACHE_BUCKET_UNLOCKED) + "\n" +
-        "#define CACHE_BUCKET_LOCKED " + std::to_string(CACHE_BUCKET_LOCKED) + "\n" +
-        "#define NUM_CACHE_LOCK_ATTEMPTS " + std::to_string(config.NumCacheLockAttempts) + "\n" +
-        "#define NUM_CACHE_LOCK_PUSH_THROUGH_ATTEMPTS " + std::to_string(config.NumCacheLockPushThroughAttempts) + "\n";
+        "#define NUM_READ_CACHE_LOCK_ATTEMPTS " + std::to_string(config.NumReadCacheLockAttempts) + "\n" +
+        "#define NUM_WRITE_CACHE_LOCK_ATTEMPTS " + std::to_string(config.NumWriteCacheLockAttempts) + "\n" +
+        "#define NUM_CACHE_ENTRIES_PER_BUCKET " + std::to_string(config.NumCacheEntriesPerBucket) + "\n" +
+        "#define MAX_SIMULTANEOUS_READERS " + std::to_string(config.MaxSimultaneousReaders) + "\n";
+
+    if (config.EnableCacheMissCounter)
+    {
+        softcache_preamble += "#define ENABLE_CACHE_MISS_COUNTER\n";
+    }
 
     glDeleteProgram(vertexProg[PULLER_OBJ_SOFTCACHE_MODE].prog);
     vertexProg[PULLER_OBJ_SOFTCACHE_MODE] = loadShaderProgramFromFile("shaders/puller_obj_softcache.vert", softcache_preamble.c_str(), GL_VERTEX_SHADER);
@@ -878,16 +892,19 @@ void BuddhaDemo::SetSoftVertexCacheConfig(const SoftVertexCacheConfig& config)
     glDeleteProgramPipelines(1, &progPipeline[PULLER_OBJ_SOFTCACHE_MODE]);
     progPipeline[PULLER_OBJ_SOFTCACHE_MODE] = createProgramPipeline(vertexProg[PULLER_OBJ_SOFTCACHE_MODE], 0, 0, 0, fragmentProg);
 
+    GLsizei bucketSizeInBytes = VERTEX_CACHE_ENTRY_SIZE_IN_DWORDS * config.NumCacheEntriesPerBucket * sizeof(GLuint);
+    GLsizei numBuckets = GLsizei(1 << (config.NumCacheBucketBits - 1));
+
     glDeleteBuffers(1, &vertexCacheBucketsBuffer);
     glGenBuffers(1, &vertexCacheBucketsBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketsBuffer);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint) * 4 * GLsizei(1 << (config.NumCacheBucketBits - 1)), NULL, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, bucketSizeInBytes * numBuckets, NULL, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glDeleteBuffers(1, &vertexCacheBucketLocksBuffer);
     glGenBuffers(1, &vertexCacheBucketLocksBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketLocksBuffer);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint) * GLsizei(1 << (config.NumCacheBucketBits - 1)), NULL, 0);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(GLuint) * numBuckets, NULL, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -1087,7 +1104,7 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kInvalidAddress);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        const uint32_t kUnlocked = CACHE_BUCKET_UNLOCKED;
+        const uint32_t kUnlocked = 0;
         glBindBuffer(GL_ARRAY_BUFFER, vertexCacheBucketLocksBuffer);
         glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kUnlocked);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1100,6 +1117,15 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, model.vertexCacheBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, vertexCacheBucketsBuffer);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, vertexCacheBucketLocksBuffer);
+        
+        if (GetSoftVertexCacheConfig().EnableCacheMissCounter)
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, vertexCacheMissCounterBuffer);
+            glClearBufferData(GL_ARRAY_BUFFER, GL_R32UI, GL_RED, GL_UNSIGNED_INT, &kZero);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, vertexCacheMissCounterBuffer);
+        }
     }
     else if (mode == GS_ASSEMBLER_MODE)
     {
@@ -1193,17 +1219,17 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
 
-    if (mode == PULLER_OBJ_SOFTCACHE_MODE)
+    if (mode == PULLER_OBJ_SOFTCACHE_MODE && GetSoftVertexCacheConfig().EnableCacheMissCounter)
     {
         glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
-        glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheCounterBuffer);
-        glBindBuffer(GL_COPY_WRITE_BUFFER, vertexCacheCounterReadbackBuffer);
+        glBindBuffer(GL_COPY_READ_BUFFER, vertexCacheMissCounterBuffer);
+        glBindBuffer(GL_COPY_WRITE_BUFFER, vertexCacheMissCounterReadbackBuffer);
         glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof(GLuint));
         glBindBuffer(GL_COPY_READ_BUFFER, 0);
         glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheCounterReadbackBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexCacheMissCounterReadbackBuffer);
         GLuint* pFinalCounter = (GLuint*)glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(GLuint), GL_MAP_READ_BIT);
         lastFrameNumVertexCacheMisses = *pFinalCounter;
         glUnmapBuffer(GL_ARRAY_BUFFER);

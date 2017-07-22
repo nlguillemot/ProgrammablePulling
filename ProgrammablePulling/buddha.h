@@ -65,8 +65,11 @@ enum VertexPullingMode
 struct SoftVertexCacheConfig
 {
     int NumCacheBucketBits;
-    int NumCacheLockAttempts;
-    int NumCacheLockPushThroughAttempts;
+    int NumReadCacheLockAttempts;
+    int NumWriteCacheLockAttempts;
+    int NumCacheEntriesPerBucket;
+    int MaxSimultaneousReaders;
+    bool EnableCacheMissCounter;
 };
 
 class IBuddhaDemo

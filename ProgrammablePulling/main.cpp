@@ -355,17 +355,22 @@ int main()
 
             if (currDemoMode == buddha::PULLER_OBJ_SOFTCACHE_MODE)
             {
-                int numCacheMisses;
-                int totalNumVerts;
-                pDemo->GetSoftVertexCacheStats(&numCacheMisses, &totalNumVerts);
+                if (pDemo->GetSoftVertexCacheConfig().EnableCacheMissCounter)
+                {
+                    int numCacheMisses;
+                    int totalNumVerts;
+                    pDemo->GetSoftVertexCacheStats(&numCacheMisses, &totalNumVerts);
 
-                ImGui::Text("Num vertex cache misses: %d / %d", numCacheMisses, totalNumVerts);
+                    ImGui::Text("Num vertex cache misses: %d / %d", numCacheMisses, totalNumVerts);
+                }
 
                 buddha::SoftVertexCacheConfig cacheConfig = pDemo->GetSoftVertexCacheConfig();
                 bool updatedConfig = false;
+                updatedConfig |= ImGui::Checkbox("Count cache misses (affects perf.)", &cacheConfig.EnableCacheMissCounter);
                 updatedConfig |= ImGui::SliderInt("Soft vertex cache bucket bits", &cacheConfig.NumCacheBucketBits, 1, 20);
-                updatedConfig |= ImGui::SliderInt("Soft vertex cache lock attempts", &cacheConfig.NumCacheLockAttempts, 0, 1024);
-                updatedConfig |= ImGui::SliderInt("Soft vertex cache lock push-through attempts", &cacheConfig.NumCacheLockPushThroughAttempts, 0, 1024);
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache read lock attempts", &cacheConfig.NumReadCacheLockAttempts, 0, 1024);
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache write lock attempts", &cacheConfig.NumWriteCacheLockAttempts, 0, 1024);
+                updatedConfig |= ImGui::SliderInt("Soft vertex cache entries per bucket", &cacheConfig.NumCacheEntriesPerBucket, 1, 10);
                 if (updatedConfig)
                 {
                     pDemo->SetSoftVertexCacheConfig(cacheConfig);

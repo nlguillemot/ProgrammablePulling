@@ -3,7 +3,7 @@ Programmable pulling experiments (based on OpenGL Insights "Programmable Vertex 
 
 # Sample image
 
-![Sample image](http://i.imgur.com/MCfTAny.png)
+![Sample image](http://i.imgur.com/kTYIeje.jpg)
 
 # Explanation of parameters
 

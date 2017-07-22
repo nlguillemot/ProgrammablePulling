@@ -42,13 +42,17 @@ This mode can be configured using the GUI with the following options:
 
 Decides the size of the hash table used for the cache. (= `2^n` buckets)
 
-#### Soft vertex cache lock attempts
+#### Soft vertex cache read lock attempts
 
-Number of times the vertex shader should try to acquire the cache bucket's lock before giving up and recomputing the vertex.
+Number of times the vertex shader should try to acquire the cache bucket's shared readers-writer lock **for read access** before giving up and recomputing the vertex.
 
-#### Soft vertex cache lock push-through attempts
+#### Soft vertex cache write lock attempts
 
-Number of times the vertex shader should poll the lock's status when it sees it locked, attempting to spin on it until it looks unlocked before trying to secure it again.
+Number of times the vertex shader should try to acquire the cache bucket's shared readers-writer lock **for write access** before giving up and recomputing the vertex.
+
+#### Soft vertex cache entries per bucket
+
+Number of entries per bucket in the hash map used for the cache.
 
 ### Assembly in GS
 

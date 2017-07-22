@@ -12,6 +12,11 @@ in vec3 assembly[];
 out vec3 outVertexPosition;
 out vec3 outVertexNormal;
 
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+
 void main()
 {
     for (int i = 0; i < 3; i++)

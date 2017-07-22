@@ -353,6 +353,18 @@ int main()
 
             ImGui::Checkbox("Animate", &animate);
 
+            bool wasBenchmarking = nowBenchmarking;
+            ImGui::Checkbox("Benchmark", &nowBenchmarking);
+
+            if (ImGui::Button("Reset Benchmarks"))
+            {
+                for (int i = 0; i < buddha::NUMBER_OF_MODES; i++)
+                {
+                    totalTimes[i] = 0;
+                    numTimes[i] = 0;
+                }
+            }
+
             if (currDemoMode == buddha::PULLER_OBJ_SOFTCACHE_MODE)
             {
                 if (pDemo->GetSoftVertexCacheConfig().EnableCacheMissCounter)
@@ -377,18 +389,6 @@ int main()
 
                     totalTimes[buddha::PULLER_OBJ_SOFTCACHE_MODE] = 0;
                     numTimes[buddha::PULLER_OBJ_SOFTCACHE_MODE] = 0;
-                }
-            }
-
-            bool wasBenchmarking = nowBenchmarking;
-            ImGui::Checkbox("Benchmark", &nowBenchmarking);
-
-            if (ImGui::Button("Reset Benchmarks"))
-            {
-                for (int i = 0; i < buddha::NUMBER_OF_MODES; i++)
-                {
-                    totalTimes[i] = 0;
-                    numTimes[i] = 0;
                 }
             }
         }

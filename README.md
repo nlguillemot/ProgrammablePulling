@@ -7,11 +7,14 @@ Programmable pulling experiments (based on OpenGL Insights "Programmable Vertex 
 
 # Explanation of parameters
 
-## Flexibility
+## Programmability
 
-* Fixed-function: Passes per-vertex inputs using built-in vertex array object and vertex shader "in" variables
-* Programmable: gl_VertexID comes from index buffer passed through VAO as usual. gl_VertexID is used to index the vertex data.
-* Fully programmable: Non-indexed draw is used, and gl_VertexID is used to manually read the VertexID from the index buffer. Presumably circumvents [post-transform cache](https://www.khronos.org/opengl/wiki/Post_Transform_Cache).
+* None: Passes per-vertex inputs using built-in vertex array object and vertex shader "in" variables
+* Pull vertex: gl_VertexID comes from index buffer passed through VAO as usual. gl_VertexID is used to index the vertex data.
+* Pull index and vertex: Non-indexed draw is used, and gl_VertexID is used to manually read the VertexID from the index buffer. Presumably circumvents [post-transform cache](https://www.khronos.org/opengl/wiki/Post_Transform_Cache).
+* Pull with soft cache: See "Special Modes" below.
+* Assembly in GS: See "Special Modes" below.
+* Assembly in TS: See "Special Modes" below.
 
 ## Layout
 

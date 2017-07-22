@@ -37,7 +37,9 @@ Uses fully programmable pulling to read mesh data layed out in the same format a
 
 ### OBJ-Style + soft cache
 
-Implements a post-transform vertex cache in software, based on the code in "Deferred Attribute Interpolation Shading" (Listing 3.1) in GPU Pro 7 (authors: Christoph Schied and Carsten Dachsbacher.)
+Implements a post-transform vertex cache in software. It was initially based on the code in "Deferred Attribute Interpolation Shading" (Listing 3.1) in GPU Pro 7 (authors: Christoph Schied and Carsten Dachsbacher.) However, it has been totally rewritten since then, but that article might be interesting to you anyways.
+
+The cache is implemented using a hash table that maps pairs of `<position index, normal index>` to the ID of a vertex in a big linearly allocated buffer. Separate chaining is used for entries within the same bucket. Access to the hash table is guarded by a per-bucket shared readers-writer lock.
 
 This mode can be configured using the GUI with the following options:
 
